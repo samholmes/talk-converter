@@ -2,6 +2,8 @@
 
 A powerful CLI tool that helps you split long YouTube videos into individual talk segments, complete with transcripts and AI-generated descriptions.
 
+![Talk Converter Preview](https://github.com/TrystonPerry/talk-converter/blob/main/youtube-converter.png)
+
 ## Setup
 
 1. **Prerequisites**
@@ -47,28 +49,32 @@ A powerful CLI tool that helps you split long YouTube videos into individual tal
 
 1. **Basic Usage**
 
-   ```bash
-   npm start -- [YouTube URL] [timestamps] [title]
-   ```
+   Make sure you create 2 folders in the proejct directory.
+   __talks for talk files
+   __youtube for youtube source videos .mp4
+
+   Use either Youtube Creator studio or the youtube-dl CLI tool download the .mp4 720p minumum video you desire (DEVx stream in this case) and renmae the download to be the {YouTube Video ID}.mp4 ie: youtube.com/watch?v=2cMzN_4guQ0 becomes 2cMzN_4guQ0.mp4
+
+   Then watch the video through and update the run.sh bash script with a single line for each talk you'd like to process. Script is run once per individual talk to be sliced.
 
    - `YouTube URL`: Full URL of the YouTube video
    - `timestamps`: Format "start,end" in seconds or HH:MM:SS format
    - `title`: Title for the extracted talk segment
 
-2. **Example**
+3. **Example**
 
    ```bash
    npm start -- "https://youtube.com/watch?v=example" "00:15:30,01:45:20" "Understanding AI Systems"
    ```
 
-3. **Output**
+4. **Output**
    The tool will create:
 
    - A video file of the extracted segment (`__talks/[title].mp4`)
    - An audio transcript (`__talks/[title].txt`)
    - A markdown file with AI-generated description and article (`__talks/[title].md`)
 
-4. **Processing Steps**
+5. **Processing Steps**
    - Downloads the full YouTube video
    - Extracts the specified segment
    - Generates transcript using AWS Transcribe
@@ -80,3 +86,4 @@ A powerful CLI tool that helps you split long YouTube videos into individual tal
 - Make sure you have sufficient AWS permissions for S3 and Transcribe services
 - Video segments are saved in the `__talks` directory
 - Original downloaded videos are stored in the `__youtube` directory
+- The tool originally was supposed to download the YouTube video for you via code, but I was unable to make that work with the given time constraints 
