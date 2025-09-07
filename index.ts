@@ -98,7 +98,7 @@ export async function spliceVideoIntoSegments(
   // Extract the talk segment from the video
   if (!(await fs.exists(`${talkPath}.mp4`))) {
     execSync(
-      `ffmpeg -i ${videoPath} -ss ${start} -to ${end} -c copy ${talkPath}.mp4`,
+      `ffmpeg -i ${videoPath} -ss ${start} -to ${end} -c copy -movflags +faststart ${talkPath}.mp4`,
       {
         stdio: "inherit",
       }
@@ -289,13 +289,17 @@ async function main() {
       videoPath
     );
 
-    // Generate transcript
-    console.log("\n3. Generating transcript...");
-    await generateTranscript(talkPath);
+    if (!process.env["SKIP_POST_PROCESSING"]) {
+      // Generate transcript
+      console.log("\n3. Generating transcript...");
+      await generateTranscript(talkPath);
 
-    // Generate summary and article
-    console.log("\n4. Generating AI summary and article...");
-    await generateSummary(talkPath);
+      // Generate summary and article
+      console.log("\n4. Generating AI summary and article...");
+      await generateSummary(talkPath);
+    } else {
+      console.log("\n3. Skipping transcript and summary (SKIP_POST_PROCESSING set)");
+    }
 
     console.log("\nProcess completed successfully! 🎉");
     console.log(
