@@ -540,7 +540,8 @@ video {
   position: relative;
   width: 100%;
   background: #000;
-  overflow: hidden;
+  border-radius: 16px;
+  overflow: visible;
   margin: 16px 0;
 }
 
@@ -564,6 +565,7 @@ video {
   display: flex;
   align-items: center;
   gap: 16px;
+  overflow: visible;
 }
 
 .glass-controls .left {
@@ -576,6 +578,8 @@ video {
   flex: 1;
   display: flex;
   align-items: center;
+  position: relative;
+  overflow: visible;
 }
 
 .glass-controls .right {
@@ -592,6 +596,7 @@ video {
   cursor: pointer;
   display: flex;
   align-items: center;
+  overflow: visible;
 }
 
 .scrubber::before {
@@ -631,14 +636,40 @@ video {
 
 .scrubber .seg {
   position: absolute;
+  top: calc(50% + 12px);
+  transform: translateY(-50%);
+  height: 3px;
+  background: #fbbf24;
+  border-radius: 1.5px;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: height 0.15s ease;
+  z-index: 3;
+}
+
+.scrubber .seg:hover {
+  height: 5px;
+}
+
+/* Add dots at the ends of the segment line */
+.scrubber .seg::before,
+.scrubber .seg::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fbbf24;
+  border-radius: 50%;
   top: 50%;
   transform: translateY(-50%);
-  height: 6px;
-  background: #fbbf24;
-  mix-blend-mode: screen;
-  opacity: 0.9;
-  border-radius: 3px;
-  pointer-events: none;
+}
+
+.scrubber .seg::before {
+  left: -5px;
+}
+
+.scrubber .seg::after {
+  right: -5px;
 }
 
 .scrubber .seg-highlight {
@@ -651,6 +682,80 @@ video {
   pointer-events: none;
 }
 
+/* Segment dots */
+.segment-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fbbf24;
+  border-radius: 50%;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  pointer-events: auto;
+}
+
+.segment-dot.inactive {
+  opacity: 0.5;
+}
+
+.segment-dot.active {
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
+}
+
+.segment-dot:hover {
+  transform: translateX(-50%) scale(1.2);
+}
+
+
+
+/* Segment popover */
+.segment-popover {
+  position: absolute;
+  top: calc(100% + 20px);
+  z-index: 1000;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  padding: 12px;
+  min-width: 200px;
+}
+
+.segment-popover .popover-content input {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  font-size: 14px;
+  color: #000;
+  margin-bottom: 10px;
+}
+
+.segment-popover .popover-content input:focus {
+  outline: none;
+  border-color: rgba(0,0,0,0.3);
+  background: rgba(0,0,0,0.02);
+}
+
+.segment-popover .popover-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.segment-popover .icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
 .scrubber .handle {
   position: absolute;
   top: 50%;
@@ -661,7 +766,6 @@ video {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
   border-radius: 3px;
   margin-left: -1.5px;
-  pointer-events: none;
   z-index: 2;
 }
 

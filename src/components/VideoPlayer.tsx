@@ -15,6 +15,7 @@ export function VideoPlayer({ current, onProcessStart, onDelete }: VideoPlayerPr
   const [currentTime, setCurrentTime] = useState(0);
   const [segmentActive, setSegmentActive] = useState(false);
   const [segmentStart, setSegmentStart] = useState(0);
+  const [segmentEnd, setSegmentEnd] = useState(0);
   const [segmentTitle, setSegmentTitle] = useState('');
   const [showTitlePopover, setShowTitlePopover] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
@@ -25,6 +26,7 @@ export function VideoPlayer({ current, onProcessStart, onDelete }: VideoPlayerPr
       videoRef.current.src = current.url;
       setSegmentActive(false);
       setSegmentStart(0);
+      setSegmentEnd(0);
       setSegmentTitle('');
       setShowTitlePopover(false);
     }
@@ -53,19 +55,24 @@ export function VideoPlayer({ current, onProcessStart, onDelete }: VideoPlayerPr
   };
 
   const handleSegmentToggle = () => {
-    if (!segmentActive) {
+    if (!segmentActive && segmentStart === 0) {
+      // Start segment
       setSegmentStart(currentTime);
+      setSegmentActive(true);
+    } else if (segmentActive) {
+      // End segment - use current position as end
+      const end = currentTime;
+      if (end <= segmentStart) return;
+      setSegmentEnd(end);
+      setSegmentActive(false);
+      // Show title popover immediately after ending segment
       setShowTitlePopover(true);
-    } else {
-      const end = Math.floor(currentTime);
-      if (end <= Math.floor(segmentStart)) return;
-      submitSegment({ start: Math.floor(segmentStart), end, title: segmentTitle });
     }
   };
 
   const handleTitleConfirm = () => {
     if (!segmentTitle.trim()) return;
-    setSegmentActive(true);
+    submitSegment({ start: Math.floor(segmentStart), end: Math.floor(segmentEnd), title: segmentTitle });
     setShowTitlePopover(false);
   };
 
@@ -73,6 +80,7 @@ export function VideoPlayer({ current, onProcessStart, onDelete }: VideoPlayerPr
     setShowTitlePopover(false);
     setSegmentTitle('');
     setSegmentStart(0);
+    setSegmentEnd(0);
   };
 
   const submitSegment = async (segment: Segment) => {
@@ -83,6 +91,7 @@ export function VideoPlayer({ current, onProcessStart, onDelete }: VideoPlayerPr
       // Reset segment state
       setSegmentActive(false);
       setSegmentStart(0);
+      setSegmentEnd(0);
       setSegmentTitle('');
     } catch (error) {
       console.error('Failed to submit segment:', error);
@@ -111,8 +120,11 @@ export function VideoPlayer({ current, onProcessStart, onDelete }: VideoPlayerPr
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
   const segmentLeft = duration > 0 ? (segmentStart / duration) * 100 : 0;
-  const segmentWidth = segmentActive && duration > 0 
-    ? ((currentTime - segmentStart) / duration) * 100 
+  
+  // When segment is active, use current time as the end
+  const effectiveSegmentEnd = segmentActive ? currentTime : segmentEnd;
+  const segmentWidth = duration > 0 && effectiveSegmentEnd > segmentStart
+    ? ((effectiveSegmentEnd - segmentStart) / duration) * 100 
     : 0;
 
   return (
@@ -174,10 +186,31 @@ export function VideoPlayer({ current, onProcessStart, onDelete }: VideoPlayerPr
                 style={{ 
                   left: `${segmentLeft}%`, 
                   width: `${segmentWidth}%`,
-                  display: segmentActive || segmentStart > 0 ? 'block' : 'none'
+                  display: segmentActive || (segmentStart > 0 && segmentEnd > 0) ? 'block' : 'none'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (segmentStart > 0 && !segmentActive) {
+                    setShowTitlePopover(true);
+                  }
                 }}
               ></div>
-              <div className="handle" style={{ left: `${progressPercent}%` }}></div>
+              
+              {/* Handle with segment dot */}
+              <div className="handle" style={{ left: `${progressPercent}%` }}>
+                {/* Show dot to start segment or to click on the line to end segment */}
+                <div 
+                  className={`segment-dot ${!segmentActive && segmentStart === 0 ? 'inactive' : ''} ${segmentActive ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSegmentToggle();
+                  }}
+                  style={{
+                    display: segmentActive || segmentStart === 0 ? 'block' : 'none'
+                  }}
+                />
+              </div>
+              
               {hoverTime !== null && (
                 <div 
                   id="hoverTip" 
@@ -187,63 +220,49 @@ export function VideoPlayer({ current, onProcessStart, onDelete }: VideoPlayerPr
                   {formatTime(hoverTime)}
                 </div>
               )}
+              
+              {/* Title popover */}
+              {showTitlePopover && segmentStart > 0 && (
+                <div 
+                  className="segment-popover"
+                  style={{ 
+                    left: `${segmentLeft + (segmentWidth / 2)}%`,
+                    transform: 'translateX(-50%)'
+                  }}
+                >
+                  <div className="popover-content">
+                    <input
+                      type="text"
+                      id="titleInputPrompt"
+                      placeholder="Title"
+                      value={segmentTitle}
+                      onChange={(e) => setSegmentTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleTitleConfirm();
+                        if (e.key === 'Escape') handleTitleCancel();
+                      }}
+                      autoFocus
+                    />
+                    <div className="popover-actions">
+                      <button className="icon-btn" onClick={handleTitleConfirm} aria-label="Confirm">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                          <path d="M9 16.2l-3.5-3.5L4 14.2l5 5 12-12-1.4-1.4z"/>
+                        </svg>
+                      </button>
+                      <button className="icon-btn" onClick={handleTitleCancel} aria-label="Cancel">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                          <path d="M18.3 5.71L12 12.01 5.7 5.7 4.29 7.12l6.3 6.3-6.3 6.29 1.41 1.42 6.3-6.3 6.29 6.3 1.42-1.42-6.3-6.3 6.3-6.29z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           
           <div className="right">
             <span id="timeLabel" className="muted">{formatTime(currentTime)} / {formatTime(duration)}</span>
-            
-            <div className="seg-controls">
-              <button 
-                id="btnSegment"
-                className="icon-btn"
-                onClick={handleSegmentToggle}
-                data-tooltip={segmentActive ? 'End segment' : 'Mark segment start'}
-                aria-label={segmentActive ? 'End segment' : 'Mark segment start'}
-              >
-                {segmentActive ? (
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M4 3h2v18H4V3zm3 0h9l-1.5 3L18 9h-9l1.5-3L7 3z"/>
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 21 20" width="20" height="20" fill="currentColor" stroke="currentColor">
-                    <path d="M12 2a1 1 0 0 1 1 1v5.586l1.293-1.293a1 1 0 0 1 1.414 1.414l-3.707 3.707a1 1 0 0 1-1.414 0L6.879 8.707A1 1 0 1 1 8.293 7.293L9.586 8.586V3a1 1 0 0 1 1-1h1.414Z"/>
-                  </svg>
-                )}
-              </button>
-
-              <div 
-                id="titlePopover"
-                className={`popover ${showTitlePopover ? '' : 'hidden'}`}
-              >
-                <div className="popover-content">
-                  <input
-                    type="text"
-                    id="titleInputPrompt"
-                    placeholder="Title"
-                    value={segmentTitle}
-                    onChange={(e) => setSegmentTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleTitleConfirm();
-                      if (e.key === 'Escape') handleTitleCancel();
-                    }}
-                    autoFocus
-                  />
-                  <div className="popover-actions">
-                    <button id="confirmTitle" className="icon-btn" onClick={handleTitleConfirm} data-tooltip="Confirm" aria-label="Confirm">
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="currentColor">
-                        <path d="M9 16.2l-3.5-3.5L4 14.2l5 5 12-12-1.4-1.4z"/>
-                      </svg>
-                    </button>
-                    <button id="cancelTitle" className="icon-btn" onClick={handleTitleCancel} data-tooltip="Cancel" aria-label="Cancel">
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="currentColor">
-                        <path d="M18.3 5.71L12 12.01 5.7 5.7 4.29 7.12l6.3 6.3-6.3 6.29 1.41 1.42 6.3-6.3 6.29 6.3 1.42-1.42-6.3-6.3 6.3-6.29z"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
