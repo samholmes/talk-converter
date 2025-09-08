@@ -1,5 +1,6 @@
 import path from 'path';
-import type { Proc } from './types';
+import fs from 'fs/promises';
+import type { Proc, TalkMetadata } from './types';
 import { processes, broadcast } from './state';
 import { rootDir, talksDir, sanitize } from './utils';
 
@@ -12,13 +13,64 @@ export async function runProcess(proc: Proc) {
     const seg = proc.segments[i];
     broadcast(proc.id, 'progress', { currentIndex: proc.currentIndex, total: proc.total, segment: seg });
 
-    const videoId = path.parse(proc.filename).name;
-    const url = `https://youtube.com/watch?v=${videoId}`;
     const timestamps = `${seg.start},${seg.end}`;
 
-    const p = Bun.spawn(['bun', 'run', 'index.ts', url, timestamps, seg.title], {
+    // Create a directory for this talk
+    const talkDirName = sanitize(seg.title);
+    const talkDir = path.join(talksDir, talkDirName);
+    
+    try {
+      await fs.mkdir(talkDir, { recursive: true });
+    } catch (error) {
+      console.error(`Failed to create directory for ${seg.title}:`, error);
+      proc.status = 'failed';
+      proc.logs.push(`Failed to create directory: ${error}`);
+      broadcast(proc.id, 'status', { status: proc.status });
+      return;
+    }
+
+    let command: string[];
+    
+    if (proc.sourceType === 'youtube') {
+      // For YouTube videos, use the YouTube URL
+      const videoId = path.parse(proc.filename).name;
+      const url = `https://youtube.com/watch?v=${videoId}`;
+      command = ['bun', 'run', 'index.ts', url, timestamps, seg.title];
+    } else {
+      // For talks, process the local file directly using ffmpeg
+      const sourcePath = proc.sourcePath.endsWith('.mp4') ? proc.sourcePath : `${proc.sourcePath}.mp4`;
+      const outputPath = path.join(talkDir, 'video.mp4');
+      
+      // Check if source file exists
+      try {
+        await fs.access(sourcePath);
+      } catch {
+        proc.status = 'failed';
+        proc.logs.push(`Source file not found: ${sourcePath}`);
+        broadcast(proc.id, 'log', { type: 'stderr', text: `Error: Source file not found: ${sourcePath}` });
+        broadcast(proc.id, 'status', { status: proc.status });
+        return;
+      }
+      
+      // Use ffmpeg directly to extract the segment
+      command = [
+        'ffmpeg', '-i', sourcePath,
+        '-ss', String(seg.start),
+        '-to', String(seg.end),
+        '-c', 'copy',
+        '-avoid_negative_ts', 'make_zero',
+        outputPath
+      ];
+    }
+
+    // Pass the directory path to index.ts via environment variable
+    const p = Bun.spawn(command, {
       cwd: rootDir,
-      env: { ...process.env, SKIP_POST_PROCESSING: '1' },
+      env: { 
+        ...process.env, 
+        SKIP_POST_PROCESSING: '1',
+        OUTPUT_DIR: talkDir  // Tell index.ts where to save files
+      },
       stdout: 'pipe',
       stderr: 'pipe',
     });
@@ -49,10 +101,26 @@ export async function runProcess(proc: Proc) {
       return;
     }
 
-    // Track expected output
-    const outPath = path.join(talksDir, `${sanitize(seg.title)}.mp4`);
-    proc.outputs.push(outPath);
-    broadcast(proc.id, 'output', { path: outPath });
+    // Create metadata file
+    const metadata: TalkMetadata = {
+      title: seg.title,
+      createdAt: Date.now(),
+      sourceVideo: proc.filename,
+      duration: seg.end - seg.start
+    };
+    
+    try {
+      await fs.writeFile(
+        path.join(talkDir, 'metadata.json'),
+        JSON.stringify(metadata, null, 2)
+      );
+    } catch (error) {
+      console.error(`Failed to write metadata for ${seg.title}:`, error);
+    }
+
+    // Track the directory path as output
+    proc.outputs.push(talkDir);
+    broadcast(proc.id, 'output', { path: talkDir });
   }
 
   proc.status = 'completed';

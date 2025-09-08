@@ -27,6 +27,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+#root {
+  height: 100%;
+}
+
 .app { 
   display: grid; 
   grid-template-columns: 360px 1fr; 
@@ -300,11 +304,9 @@ video {
   max-height: 65vh; 
   background: #000; 
   border: 1px solid var(--border); 
-  border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.5);
 }
 
-.player { position: relative; }
 
 .glass-controls {
   position: absolute;
@@ -316,6 +318,7 @@ video {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 10px 12px;
+  margin: 10px;
   backdrop-filter: blur(12px) saturate(140%);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
   box-shadow: 0 2px 12px rgba(0,0,0,0.25);
@@ -387,24 +390,267 @@ video {
 }
 .icon-btn[data-tooltip]:hover::after { opacity: 1; }
 
-/* Scrubber */
-.scrubber {
-  position: relative; height: 14px; border-radius: 8px; cursor: pointer;
-  background: rgba(0,0,0,0.2);
+/* Control button (styled like icon-btn but with text) */
+.control-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 14px;
 }
-.scrubber .buffer {
-  position: absolute; top: 0; left: 0; bottom: 0; width: 0%; border-radius: 8px;
-  background: rgba(255,255,255,0.25);
-}
-.scrubber .progress {
-  position: absolute; top: 0; left: 0; bottom: 0; width: 0%; border-radius: 8px;
+
+.control-btn:hover {
   background: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255,255,255,0.2);
+}
+
+.control-btn.active {
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.3);
+}
+
+.control-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Media controls */
+.media-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 12px;
+  margin: 16px 0;
+}
+
+/* Title popover */
+.title-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+}
+
+.title-popover input {
+  padding: 8px 12px;
+  border: 1px solid rgba(0,0,0,0.2);
+  border-radius: 6px;
+  font-size: 14px;
+  width: 200px;
+}
+
+.popover-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Delete button */
+.delete-video-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(255,0,0,0.1);
+  border: 1px solid rgba(255,0,0,0.2);
+  border-radius: 8px;
+  color: #ff4444;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.delete-video-btn:hover {
+  background: rgba(255,0,0,0.2);
+  border-color: rgba(255,0,0,0.3);
+}
+
+/* Popover */
+.popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1000;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  padding: 16px;
+  min-width: 260px;
+}
+
+.popover-content input {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.05);
   border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  font-size: 14px;
+  color: #000;
+  margin-bottom: 12px;
 }
+
+.popover-content input:focus {
+  outline: none;
+  border-color: rgba(0,0,0,0.3);
+  background: rgba(0,0,0,0.02);
+}
+
+.popover-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Muted text */
+.muted {
+  color: rgba(255,255,255,0.65);
+}
+
+/* Segment controls */
+.seg-controls {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+/* Segment controls */
+.segment-controls {
+  position: relative;
+  display: inline-block;
+}
+
+/* Player styles */
+.player {
+  position: relative;
+  width: 100%;
+  background: #000;
+  overflow: hidden;
+  margin: 16px 0;
+}
+
+#player {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #000;
+}
+
+/* Glass controls overlay */
+.glass-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.glass-controls .left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.glass-controls .center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.glass-controls .right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Progress/Scrubber bar */
+.scrubber {
+  width: 100%;
+  height: 40px;
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.scrubber::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 3px;
+}
+
+.scrubber .buffer {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  height: 6px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.scrubber .progress {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  height: 6px;
+  background: #fff;
+  border-radius: 3px;
+  pointer-events: none;
+  transition: width 0.1s linear;
+}
+
 .scrubber .seg {
-  position: absolute; top: 0; bottom: 0; left: 0; width: 0%; border-radius: 8px;
-  background: #fbbf24; mix-blend-mode: screen; opacity: 0.9;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 6px;
+  background: #fbbf24;
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  border-radius: 3px;
+  pointer-events: none;
 }
+
+.scrubber .seg-highlight {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 6px;
+  background: rgba(255, 0, 0, 0.5);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
 .scrubber .handle {
   position: absolute;
   top: 50%;
@@ -414,12 +660,49 @@ video {
   transform: translateY(-50%);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
   border-radius: 3px;
-  margin-left: 3px;
+  margin-left: -1.5px;
+  pointer-events: none;
+  z-index: 2;
 }
+
 .scrubber .hover-tip {
-  position: absolute; top: -34px; transform: translateX(-50%);
-  padding: 4px 8px; font-size: 12px; color: #fff; background: rgba(0,0,0,0.8);
-  border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; opacity: 0; pointer-events: none;
+  position: absolute;
+  top: -30px;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.scrubber:hover .hover-tip {
+  opacity: 1;
+}
+
+/* Video actions */
+.video-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+}
+
+/* Time label */
+#timeLabel {
+  color: rgba(255,255,255,0.8);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* Segment controls within glass overlay */
+.glass-controls .segment-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 /* Title popover */
@@ -439,6 +722,17 @@ video {
 }
 
 .hidden { display: none !important; }
+
+/* Video UI section */
+#videoUI {
+  display: grid;
+  gap: 16px;
+}
+
+/* Icon button tooltips */
+.icon-btn[aria-label] {
+  position: relative;
+}
 .placeholder { display: grid; place-items: center; }
 .placeholder .empty { max-width: 48rem; text-align: center; color: var(--muted); }
 .placeholder h2 { margin: 0 0 8px; color: #fff; }

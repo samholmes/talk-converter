@@ -72,6 +72,11 @@ processRoutes.get('/api/process/:id/stream', (c) => {
   
   if (!proc) return c.notFound();
   
+  // Set headers for SSE
+  c.header('Cache-Control', 'no-cache');
+  c.header('Connection', 'keep-alive');
+  c.header('Content-Type', 'text/event-stream');
+  
   return streamSSE(c, async (stream) => {
     // For SSE, we need to send as default 'message' event
     const send = (_event: string, data: string) => {

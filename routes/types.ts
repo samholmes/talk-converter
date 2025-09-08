@@ -1,7 +1,14 @@
-export interface Segment { 
-  start: number; 
-  end: number; 
+export interface Segment {
+  start: number;
+  end: number;
   title: string;
+}
+
+export interface TalkMetadata {
+  title: string;
+  createdAt: number;
+  sourceVideo?: string;
+  duration?: number;
 }
 
 export interface Proc {

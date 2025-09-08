@@ -24,6 +24,45 @@ export const listMP4 = async (dir: string) => {
   }
 };
 
+// List talk directories (for the new structure)
+export const listTalkDirs = async () => {
+  try {
+    const entries = await fs.readdir(talksDir, { withFileTypes: true });
+    const talkDirs = [];
+    
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const metadataPath = path.join(talksDir, entry.name, 'metadata.json');
+        try {
+          const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf-8'));
+          talkDirs.push({
+            name: entry.name,
+            title: metadata.title || entry.name,
+            metadata
+          });
+        } catch {
+          // If no metadata, use directory name
+          talkDirs.push({
+            name: entry.name,
+            title: entry.name,
+            metadata: null
+          });
+        }
+      }
+    }
+    
+    return talkDirs.sort((a, b) => {
+      // Sort by creation date if available, otherwise by name
+      if (a.metadata?.createdAt && b.metadata?.createdAt) {
+        return b.metadata.createdAt - a.metadata.createdAt;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  } catch {
+    return [];
+  }
+};
+
 export const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '_');
 
 // Cache in-flight conversions to avoid duplicate work

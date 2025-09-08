@@ -40,9 +40,15 @@ interface ProcessMessage {
   data: any;
 }
 
+interface VideoInfo {
+  name: string;
+  url: string;
+  title?: string;
+}
+
 interface ListResponse {
-  liveStreams: Array<{ name: string }>;
-  talks: Array<{ name: string }>;
+  liveStreams: Array<VideoInfo>;
+  talks: Array<VideoInfo>;
 }
 
 let mode: Mode = 'none';
@@ -77,36 +83,55 @@ async function refreshLists(): Promise<void> {
   const data: ListResponse = await res.json();
   liveList.innerHTML = '';
   talkList.innerHTML = '';
-  for (const name of data.liveStreams.map((x) => x.name)) {
+  
+  for (const video of data.liveStreams) {
     const li = document.createElement('li');
-    li.textContent = name;
-    li.onclick = () => select('youtube', name);
+    li.textContent = video.name;
+    li.dataset.url = video.url;
+    li.onclick = () => selectVideo('youtube', video);
     liveList.appendChild(li);
   }
-  for (const name of data.talks.map((x) => x.name)) {
+  
+  for (const video of data.talks) {
     const li = document.createElement('li');
-    li.textContent = name;
-    li.onclick = () => select('talks', name);
+    li.textContent = video.title || video.name;
+    li.dataset.url = video.url;
+    li.dataset.name = video.name;
+    li.onclick = () => selectVideo('talks', video);
     talkList.appendChild(li);
   }
+  
   if (mode === 'none') setMode('none');
 }
 
-function select(type: 'youtube' | 'talks', filename: string): void {
+function selectVideo(type: 'youtube' | 'talks', video: VideoInfo): void {
   if (eventSrc) { eventSrc.close(); eventSrc = null; }
   Array.from(liveList.children).concat(Array.from(talkList.children)).forEach((li) => li.classList.remove('selected'));
   const list = type === 'youtube' ? liveList : talkList;
   Array.from(list.children).forEach((li) => { 
-    if (li.textContent === filename) li.classList.add('selected'); 
+    const element = li as HTMLElement;
+    if (element.dataset.name === video.name || li.textContent === video.name) {
+      li.classList.add('selected'); 
+    }
   });
-  const url = `/media/${type}/${encodeURIComponent(filename)}`;
-  current = { type, filename, url };
-  player.src = url;
-  currentLabel.textContent = `${type === 'youtube' ? 'Live Stream' : 'Talk'}: ${filename}`;
+  current = { type, filename: video.name, url: video.url };
+  player.src = video.url;
+  const displayName = video.title || video.name;
+  currentLabel.textContent = `${type === 'youtube' ? 'Live Stream' : 'Talk'}: ${displayName}`;
   statusEl.textContent = '';
   logsEl.textContent = '';
   resetSegment();
   setMode('video');
+  
+  // Show/hide delete button based on type
+  const deleteBtn = document.getElementById('deleteVideoBtn');
+  if (deleteBtn) {
+    if (type === 'talks') {
+      deleteBtn.classList.remove('hidden');
+    } else {
+      deleteBtn.classList.add('hidden');
+    }
+  }
 }
 
 function resetSegment(): void {
@@ -327,11 +352,16 @@ function openStream(id: string): void {
           // Refresh lists and auto-select the new video
           await refreshLists();
           if (outputs && outputs.length > 0) {
-            // Extract filename from path and select it
+            // The output is now a directory path
             const outputPath = outputs[0];
-            const filename = outputPath.split('/').pop();
-            if (filename) {
-              select('talks', filename);
+            const dirName = outputPath.split('/').pop();
+            if (dirName) {
+              // Find the talk in the list and select it
+              const talkItems = Array.from(talkList.children) as HTMLElement[];
+              const talkItem = talkItems.find(li => li.dataset.name === dirName);
+              if (talkItem) {
+                talkItem.click();
+              }
             }
           }
         } else if (status === 'failed') {

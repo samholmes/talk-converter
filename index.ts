@@ -93,12 +93,20 @@ export async function spliceVideoIntoSegments(
 
   console.log(`Splitting video from ${start}s to ${end}s`);
 
-  const talkPath = path.join(talksDir, title.replace(/[^a-zA-Z0-9]/g, "_"));
+  // Use OUTPUT_DIR if provided, otherwise use default
+  const outputDir = process.env.OUTPUT_DIR || talksDir;
+  const outputName = title.replace(/[^a-zA-Z0-9]/g, "_");
+  const talkPath = process.env.OUTPUT_DIR 
+    ? path.join(outputDir, "video") // In directory mode, use fixed filename
+    : path.join(outputDir, outputName); // Legacy mode
 
   // Extract the talk segment from the video
-  if (!(await fs.exists(`${talkPath}.mp4`))) {
+  const videoFile = `${talkPath}.mp4`;
+  const audioFile = `${talkPath}.mp3`;
+  
+  if (!(await fs.exists(videoFile))) {
     execSync(
-      `ffmpeg -i ${videoPath} -ss ${start} -to ${end} -c copy -movflags +faststart ${talkPath}.mp4`,
+      `ffmpeg -i ${videoPath} -ss ${start} -to ${end} -c copy -movflags +faststart ${videoFile}`,
       {
         stdio: "inherit",
       }
@@ -106,9 +114,9 @@ export async function spliceVideoIntoSegments(
   }
 
   // Get the audio transcript from the talk segment
-  if (!(await fs.exists(`${talkPath}.mp3`))) {
+  if (!(await fs.exists(audioFile))) {
     execSync(
-      `ffmpeg -i ${talkPath}.mp4 -vn -ab 320k -ar 44100 -y ${talkPath}.mp3`,
+      `ffmpeg -i ${videoFile} -vn -ab 320k -ar 44100 -y ${audioFile}`,
       {
         stdio: "inherit",
       }
