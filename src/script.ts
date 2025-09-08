@@ -1,30 +1,53 @@
 // Main UI logic (ES module)
 
-const liveList = document.getElementById('liveList');
-const talkList = document.getElementById('talkList');
-const procList = document.getElementById('procList');
-const player = document.getElementById('player');
-const statusEl = document.getElementById('status');
-const logsEl = document.getElementById('logs');
-const currentLabel = document.getElementById('currentLabel');
-const videoUI = document.getElementById('videoUI');
-const logsUI = document.getElementById('logsUI');
-const emptyUI = document.getElementById('emptyUI');
+const liveList = document.getElementById('liveList') as HTMLUListElement;
+const talkList = document.getElementById('talkList') as HTMLUListElement;
+const procList = document.getElementById('procList') as HTMLUListElement;
+const player = document.getElementById('player') as HTMLVideoElement;
+const statusEl = document.getElementById('status') as HTMLSpanElement;
+const logsEl = document.getElementById('logs') as HTMLPreElement;
+const currentLabel = document.getElementById('currentLabel') as HTMLElement;
+const videoUI = document.getElementById('videoUI') as HTMLElement;
+const logsUI = document.getElementById('logsUI') as HTMLElement;
+const emptyUI = document.getElementById('emptyUI') as HTMLElement;
 
-const btnPlay = document.getElementById('btnPlay');
-const scrubber = document.getElementById('scrubber');
-const hoverTip = document.getElementById('hoverTip');
-const timeLabel = document.getElementById('timeLabel');
-const segHighlight = document.getElementById('segHighlight');
-const btnSegment = document.getElementById('btnSegment');
-const titlePopover = document.getElementById('titlePopover');
-const titleInputPrompt = document.getElementById('titleInputPrompt');
-const confirmTitle = document.getElementById('confirmTitle');
-const cancelTitle = document.getElementById('cancelTitle');
+const btnPlay = document.getElementById('btnPlay') as HTMLButtonElement;
+const scrubber = document.getElementById('scrubber') as HTMLDivElement;
+const hoverTip = document.getElementById('hoverTip') as HTMLDivElement;
+const timeLabel = document.getElementById('timeLabel') as HTMLSpanElement;
+const segHighlight = document.getElementById('segHighlight') as HTMLDivElement;
+const btnSegment = document.getElementById('btnSegment') as HTMLButtonElement;
+const titlePopover = document.getElementById('titlePopover') as HTMLDivElement;
+const titleInputPrompt = document.getElementById('titleInputPrompt') as HTMLInputElement;
+const confirmTitle = document.getElementById('confirmTitle') as HTMLButtonElement;
+const cancelTitle = document.getElementById('cancelTitle') as HTMLButtonElement;
 
-let mode = 'none';
-let current = { type: null, filename: null, url: null };
-let eventSrc = null;
+type Mode = 'none' | 'video' | 'process';
+type CurrentMedia = {
+  type: 'youtube' | 'talks' | null;
+  filename: string | null;
+  url: string | null;
+};
+
+interface Segment {
+  start: number;
+  end: number;
+  title: string;
+}
+
+interface ProcessMessage {
+  event: string;
+  data: any;
+}
+
+interface ListResponse {
+  liveStreams: Array<{ name: string }>;
+  talks: Array<{ name: string }>;
+}
+
+let mode: Mode = 'none';
+let current: CurrentMedia = { type: null, filename: null, url: null };
+let eventSrc: EventSource | null = null;
 
 // Segment state
 let segmentActive = false;
@@ -32,14 +55,14 @@ let segmentTitle = '';
 let segmentStart = 0;
 let lastScrubTime = 0;
 
-function setMode(m) {
+function setMode(m: Mode): void {
   mode = m;
   videoUI.classList.toggle('hidden', m !== 'video');
   logsUI.classList.toggle('hidden', m !== 'process');
   emptyUI.classList.toggle('hidden', m !== 'none');
 }
 
-function fmtTime(s) {
+function fmtTime(s: number): string {
   s = Math.max(0, Math.floor(s || 0));
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
@@ -49,9 +72,9 @@ function fmtTime(s) {
   return h ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
 }
 
-async function refreshLists() {
+async function refreshLists(): Promise<void> {
   const res = await fetch('/api/list');
-  const data = await res.json();
+  const data: ListResponse = await res.json();
   liveList.innerHTML = '';
   talkList.innerHTML = '';
   for (const name of data.liveStreams.map((x) => x.name)) {
@@ -69,13 +92,16 @@ async function refreshLists() {
   if (mode === 'none') setMode('none');
 }
 
-function select(type, filename) {
+function select(type: 'youtube' | 'talks', filename: string): void {
   if (eventSrc) { eventSrc.close(); eventSrc = null; }
-  [...liveList.children, ...talkList.children].forEach((li) => li.classList.remove('selected'));
+  Array.from(liveList.children).concat(Array.from(talkList.children)).forEach((li) => li.classList.remove('selected'));
   const list = type === 'youtube' ? liveList : talkList;
-  [...list.children].forEach((li) => { if (li.textContent === filename) li.classList.add('selected'); });
-  current = { type, filename, url: `/media/${type}/${encodeURIComponent(filename)}` };
-  player.src = current.url;
+  Array.from(list.children).forEach((li) => { 
+    if (li.textContent === filename) li.classList.add('selected'); 
+  });
+  const url = `/media/${type}/${encodeURIComponent(filename)}`;
+  current = { type, filename, url };
+  player.src = url;
   currentLabel.textContent = `${type === 'youtube' ? 'Live Stream' : 'Talk'}: ${filename}`;
   statusEl.textContent = '';
   logsEl.textContent = '';
@@ -83,7 +109,7 @@ function select(type, filename) {
   setMode('video');
 }
 
-function resetSegment() {
+function resetSegment(): void {
   segmentActive = false;
   segmentTitle = '';
   segmentStart = 0;
@@ -113,12 +139,12 @@ player.addEventListener('loadedmetadata', () => {
   updateBuffered();
 });
 
-function updateProgress() {
+function updateProgress(): void {
   const duration = player.duration || 0;
   const currentTime = player.currentTime || 0;
   const pct = duration ? (currentTime / duration) * 100 : 0;
-  const progress = scrubber.querySelector('.progress');
-  const handle = scrubber.querySelector('.handle');
+  const progress = scrubber.querySelector('.progress') as HTMLDivElement;
+  const handle = scrubber.querySelector('.handle') as HTMLDivElement;
   progress.style.width = pct + '%';
   handle.style.left = `calc(${pct}% - 6px)`;
   timeLabel.textContent = `${fmtTime(currentTime)} / ${fmtTime(duration)}`;
@@ -131,9 +157,9 @@ function updateProgress() {
   lastScrubTime = Math.max(lastScrubTime, currentTime);
 }
 
-function updateBuffered() {
+function updateBuffered(): void {
   const duration = player.duration || 0;
-  const bufferBar = scrubber.querySelector('.buffer');
+  const bufferBar = scrubber.querySelector('.buffer') as HTMLDivElement;
   if (!duration || player.buffered.length === 0) {
     bufferBar.style.width = '0%';
     return;
@@ -145,7 +171,7 @@ function updateBuffered() {
 // Scrubber interactions
 let scrubbing = false;
 
-function posToTime(clientX) {
+function posToTime(clientX: number): number {
   const rect = scrubber.getBoundingClientRect();
   let x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
   let t = (x / rect.width) * (player.duration || 0);
@@ -199,7 +225,7 @@ btnSegment.addEventListener('click', () => {
   }
 });
 
-function openTitlePopover() {
+function openTitlePopover(): void {
   titlePopover.classList.remove('hidden');
   titleInputPrompt.value = '';
   titleInputPrompt.focus();
@@ -222,7 +248,7 @@ confirmTitle.addEventListener('click', () => {
   updateProgress();
 });
 
-async function submitSegment(segment) {
+async function submitSegment(segment: Segment): Promise<void> {
   statusEl.textContent = 'Submitting segment...';
   const res = await fetch('/api/process', {
     method: 'POST',
@@ -234,63 +260,105 @@ async function submitSegment(segment) {
     return;
   }
   const { id } = await res.json();
-  addProcessingItem(id, current.filename);
+  addProcessingItem(id, segment.title);
   selectProcess(id);
   statusEl.textContent = `Processing started (#${id.slice(0, 8)})`;
 }
 
 // Processing list + SSE
-function addProcessingItem(id, sourceName) {
+function addProcessingItem(id: string, title: string): void {
   const li = document.createElement('li');
   li.id = `proc-${id}`;
   li.classList.add('processing');
-  li.textContent = `Processing ${sourceName} — ${id.slice(0, 8)}`;
+  li.textContent = `Processing "${title}"`;
   li.onclick = () => selectProcess(id);
   procList.prepend(li);
 }
 
-function selectProcess(id) {
+function selectProcess(id: string): void {
   setMode('process');
   openStream(id);
 }
 
-function openStream(id) {
+function openStream(id: string): void {
   if (eventSrc) eventSrc.close();
   logsEl.textContent = '';
+  statusEl.textContent = 'Connecting to process stream...';
+  
   eventSrc = new EventSource(`/api/process/${id}/stream`);
-  eventSrc.onmessage = (ev) => {
+  
+  eventSrc.onopen = () => {
+    statusEl.textContent = 'Connected, waiting for updates...';
+  };
+  
+  eventSrc.onerror = (err) => {
+    console.error('SSE error:', err);
+    statusEl.textContent = 'Connection error, retrying...';
+  };
+  
+  eventSrc.onmessage = async (ev) => {
     try {
-      const msg = JSON.parse(ev.data);
-      if (msg.event === 'log') {
+      const msg: ProcessMessage = JSON.parse(ev.data);
+      
+      // Handle initial snapshot
+      if (msg.event === 'snapshot') {
+        const proc = msg.data;
+        statusEl.textContent = `Status: ${proc.status}`;
+        if (proc.logs && proc.logs.length > 0) {
+          logsEl.textContent = proc.logs.join('\n') + '\n';
+          logsEl.scrollTop = logsEl.scrollHeight;
+        }
+      } else if (msg.event === 'log') {
         logsEl.textContent += msg.data.line + '\n';
         logsEl.scrollTop = logsEl.scrollHeight;
       } else if (msg.event === 'progress') {
-        const { currentIndex, total } = msg.data;
-        statusEl.textContent = `Progress: ${currentIndex + 1}/${total}`;
+        const { currentIndex, total, segment } = msg.data;
+        statusEl.textContent = `Processing segment ${currentIndex + 1}/${total}: "${segment.title}"`;
       } else if (msg.event === 'status') {
-        const { status } = msg.data;
+        const { status, outputs } = msg.data;
         if (status === 'completed') {
-          statusEl.textContent = 'Completed';
+          statusEl.textContent = 'Completed successfully!';
           const li = document.getElementById(`proc-${id}`);
           if (li) {
             li.classList.remove('processing');
             li.classList.add('done');
-            li.textContent = li.textContent.replace('Processing', 'Done');
+            li.textContent = li.textContent.replace('Processing', 'Done:');
           }
-          refreshLists();
+          // Refresh lists and auto-select the new video
+          await refreshLists();
+          if (outputs && outputs.length > 0) {
+            // Extract filename from path and select it
+            const outputPath = outputs[0];
+            const filename = outputPath.split('/').pop();
+            if (filename) {
+              select('talks', filename);
+            }
+          }
         } else if (status === 'failed') {
-          statusEl.textContent = 'Failed';
+          statusEl.textContent = 'Processing failed!';
+          const li = document.getElementById(`proc-${id}`);
+          if (li) {
+            li.classList.remove('processing');
+            li.classList.add('failed');
+            li.textContent = li.textContent.replace('Processing', 'Failed:');
+          }
         }
+      } else if (msg.event === 'output') {
+        const { path } = msg.data;
+        const filename = path.split('/').pop();
+        statusEl.textContent = `Created: ${filename}`;
       }
-    } catch { }
+    } catch (err) {
+      console.error('Error parsing SSE message:', err, ev.data);
+    }
   };
 }
 
 // Style helpers for tooltips
-for (const el of document.querySelectorAll('[data-tooltip]')) {
+document.querySelectorAll('[data-tooltip]').forEach((el) => {
   el.addEventListener('mouseenter', () => el.classList.add('tt'));
   el.addEventListener('mouseleave', () => el.classList.remove('tt'));
-}
+});
 
 // Init
 refreshLists();
