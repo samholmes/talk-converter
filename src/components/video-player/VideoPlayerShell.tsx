@@ -38,6 +38,37 @@ export function VideoPlayerShell({
     }
   }, [source.url]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!videoRef.current) return;
+      
+      // Only handle arrow keys if no input is focused
+      const isInputFocused = document.activeElement?.tagName === 'INPUT' || 
+                            document.activeElement?.tagName === 'TEXTAREA';
+      if (isInputFocused) return;
+
+      const minTime = segmentState.mode === 'marking' ? segmentState.start || 0 : 0;
+      
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          const prevTime = Math.max(minTime, videoRef.current.currentTime - 1);
+          videoRef.current.currentTime = prevTime;
+          setCurrentTime(prevTime);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          const nextTime = Math.min(duration, videoRef.current.currentTime + 1);
+          videoRef.current.currentTime = nextTime;
+          setCurrentTime(nextTime);
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [duration, segmentState]);
+
   const handleTogglePlay = () => {
     if (!videoRef.current) return;
 
