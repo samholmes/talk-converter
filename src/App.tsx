@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { VideoPlayer } from './components/VideoPlayer';
+import { VideoPlayerShell } from './components/video-player/VideoPlayerShell';
 import { ProcessLogs } from './components/ProcessLogs';
 import { EmptyState } from './components/EmptyState';
 import type { VideoInfo, CurrentMedia, ProcessInfo } from './types';
@@ -116,9 +116,14 @@ export function App() {
         selectedProcess={mode === 'process' ? currentProcess : null}
       />
       <main>
-        {mode === 'video' && current.url && (
-          <VideoPlayer
-            current={current}
+        {mode === 'video' && current.url && current.type && current.filename && (
+          <VideoPlayerShell
+            source={{
+              type: current.type,
+              filename: current.filename,
+              url: current.url,
+              label: current.filename,
+            }}
             onProcessStart={handleProcessStart}
             onDelete={current.type === 'talks' ? () => handleDelete(current.filename!) : undefined}
           />
