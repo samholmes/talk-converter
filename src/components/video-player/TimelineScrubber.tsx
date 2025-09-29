@@ -1,4 +1,4 @@
-import { useState, useRef, type ReactNode } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import type { TimelineOverlayProps } from './types';
 
 interface TimelineScrubberProps {
@@ -23,6 +23,7 @@ export function TimelineScrubber({
 }: TimelineScrubberProps) {
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverX, setHoverX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const scrubberRef = useRef<HTMLDivElement>(null);
 
   const toPercent = (time: number): number => {
@@ -44,12 +45,24 @@ export function TimelineScrubber({
     return h ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
   };
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!scrubberRef.current) return;
+  const calculateTimeFromX = (clientX: number): number => {
+    if (!scrubberRef.current) return currentTime;
     const rect = scrubberRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
+    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
     const percent = (x / rect.width) * 100;
-    const time = Math.max(minTime, fromPercent(percent));
+    return Math.max(minTime, fromPercent(percent));
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDragging) return;
+    const time = calculateTimeFromX(e.clientX);
+    onSeek(time);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+    const time = calculateTimeFromX(e.clientX);
     onSeek(time);
   };
 
@@ -69,6 +82,28 @@ export function TimelineScrubber({
     onHover?.(null);
   };
 
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const time = calculateTimeFromX(e.clientX);
+      onSeek(time);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, onSeek, minTime, currentTime, duration]);
+
   const progressPercent = toPercent(currentTime);
 
   return (
@@ -76,7 +111,9 @@ export function TimelineScrubber({
       ref={scrubberRef}
       id="scrubber"
       className="scrubber"
+      style={{ cursor: isDragging ? 'grabbing' : 'pointer' }}
       onClick={handleClick}
+      onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
