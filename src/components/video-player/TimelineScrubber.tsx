@@ -9,6 +9,7 @@ interface TimelineScrubberProps {
   onHover?: (time: number | null) => void;
   children?: (props: TimelineOverlayProps) => ReactNode;
   segmentDot?: ReactNode;
+  minTime?: number;
 }
 
 export function TimelineScrubber({
@@ -18,6 +19,7 @@ export function TimelineScrubber({
   onHover,
   children,
   segmentDot,
+  minTime = 0,
 }: TimelineScrubberProps) {
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverX, setHoverX] = useState(0);
@@ -47,7 +49,7 @@ export function TimelineScrubber({
     const rect = scrubberRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percent = (x / rect.width) * 100;
-    const time = fromPercent(percent);
+    const time = Math.max(minTime, fromPercent(percent));
     onSeek(time);
   };
 

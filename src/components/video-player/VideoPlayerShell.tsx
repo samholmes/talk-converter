@@ -124,6 +124,7 @@ export function VideoPlayerShell({
             currentTime={currentTime}
             onSeek={handleSeek}
             segmentDot={renderSegmentDot()}
+            minTime={segmentState.mode === 'marking' ? segmentState.start : undefined}
           >
             {(props) => (
               <>
