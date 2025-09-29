@@ -636,12 +636,12 @@ video {
 
 .scrubber .seg {
   position: absolute;
-  top: calc(50% + 12px);
+  top: calc(50%);
   transform: translateY(-50%);
-  height: 3px;
+  height: 6px;
   background: #fbbf24;
   border-radius: 1.5px;
-  pointer-events: auto;
+  pointer-events: none;
   cursor: pointer;
   transition: height 0.15s ease;
   z-index: 3;
@@ -649,19 +649,6 @@ video {
 
 .scrubber .seg:hover {
   height: 5px;
-}
-
-/* Add dots at the ends of the segment line */
-.scrubber .seg::before,
-.scrubber .seg::after {
-  content: '';
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background: #fbbf24;
-  border-radius: 50%;
-  top: 50%;
-  transform: translateY(-50%);
 }
 
 .scrubber .seg::before {
@@ -685,10 +672,10 @@ video {
 /* Segment dots */
 .segment-dot {
   position: absolute;
-  width: 10px;
+  width: 3px;
   height: 10px;
   background: #fbbf24;
-  border-radius: 50%;
+  border-radius: 3px;
   top: calc(100% + 4px);
   left: 50%;
   transform: translateX(-50%);
