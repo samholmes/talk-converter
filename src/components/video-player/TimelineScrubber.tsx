@@ -54,12 +54,17 @@ export function TimelineScrubber({
   };
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isDragging) return;
+    // Don't handle click if it's from a child element (like segment handle)
+    if (e.target !== e.currentTarget || isDragging) return;
+    
     const time = calculateTimeFromX(e.clientX);
     onSeek(time);
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Don't start dragging if clicking on a child element (like segment handle)
+    if (e.target !== e.currentTarget) return;
+    
     e.preventDefault();
     setIsDragging(true);
     const time = calculateTimeFromX(e.clientX);

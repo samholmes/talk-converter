@@ -669,13 +669,18 @@ video {
   pointer-events: none;
 }
 
-/* Segment dots */
-.segment-dot {
+/* Segment handle */
+.segment-handle {
   position: absolute;
-  width: 3px;
-  height: 10px;
-  background: #fbbf24;
-  border-radius: 3px;
+  width: 0px;
+  border-style: solid;
+  border-color: transparent;
+  border-bottom-color: #fbbf24;
+  border-bottom-width: 12px;
+  border-top-width: 0;
+  border-left-width: 3px;
+  border-right-width: 3px;
+  height: 0px;
   top: calc(100% + 4px);
   left: 50%;
   transform: translateX(-50%);
@@ -684,16 +689,15 @@ video {
   pointer-events: auto;
 }
 
-.segment-dot.inactive {
+.segment-handle.inactive {
   opacity: 0.5;
 }
 
-.segment-dot.active {
+.segment-handle.active {
   opacity: 1;
-  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
 }
 
-.segment-dot:hover {
+.segment-handle:hover {
   transform: translateX(-50%) scale(1.2);
 }
 

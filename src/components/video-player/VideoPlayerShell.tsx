@@ -103,8 +103,8 @@ export function VideoPlayerShell({
     }
   };
 
-  // Render the segment dot for the handle
-  const renderSegmentDot = () => {
+  // Render the segment handle
+  const renderSegmentHandle = () => {
     const hasSegment = segmentState.start !== undefined;
     const isActive = segmentState.mode === 'marking';
     const shouldShow = isActive || !hasSegment;
@@ -113,7 +113,7 @@ export function VideoPlayerShell({
 
     return (
       <div
-        className={`segment-dot ${!isActive && !hasSegment ? 'inactive' : ''} ${isActive ? 'active' : ''}`}
+        className={`segment-handle ${!isActive && !hasSegment ? 'inactive' : ''} ${isActive ? 'active' : ''}`}
         onClick={(e) => {
           e.stopPropagation();
           handleToggleSegment();
@@ -154,7 +154,7 @@ export function VideoPlayerShell({
             duration={duration}
             currentTime={currentTime}
             onSeek={handleSeek}
-            segmentDot={renderSegmentDot()}
+            segmentDot={renderSegmentHandle()}
             minTime={segmentState.mode === 'marking' ? segmentState.start : undefined}
           >
             {(props) => (
