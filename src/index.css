@@ -250,6 +250,60 @@ aside li.processing::after {
   background: rgba(255,255,255,0.15);
 }
 
+/* Process logs UI */
+#logsUI {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0; /* Important for flexbox overflow */
+  gap: 12px;
+}
+
+#logsUI #status {
+  font-size: 14px;
+  color: #9ca3af;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+#logsUI #logs {
+  flex: 1;
+  min-height: 0; /* Important for flexbox overflow */
+  background: rgba(255,255,255,0.03);
+  color: #e5e7eb;
+  border: 1px solid var(--border);
+  padding: 16px;
+  border-radius: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
+  backdrop-filter: blur(10px);
+  margin: 0;
+}
+
+#logsUI #logs::-webkit-scrollbar {
+  width: 8px;
+}
+
+#logsUI #logs::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.02);
+  border-radius: 4px;
+}
+
+#logsUI #logs::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+}
+
+#logsUI #logs::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.15);
+}
+
 .controls {
   display: flex;
   gap: 12px;
