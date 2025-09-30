@@ -61,6 +61,7 @@ export function SegmentPopover({
         <input
           type="text"
           id="titleInputPrompt"
+          autoComplete="off"
           placeholder="Title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
