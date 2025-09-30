@@ -99,6 +99,9 @@ export function VideoPlayerShell({
       const end = currentTime;
       if (end > segmentState.start) {
         setSegmentState({ ...segmentState, mode: 'complete', end });
+      } else {
+        // Cancel segment if end position is same as start
+        setSegmentState({ mode: 'idle' });
       }
     }
   };
