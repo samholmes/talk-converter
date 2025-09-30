@@ -149,49 +149,49 @@ export function VideoPlayerShell({
 
   return (
     <div id="videoUI">
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <div className="row">
-          {isRenaming ? (
-            <div className="row" style={{ gap: '8px' }}>
-              <input
-                type="text"
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleRenameSubmit();
-                  if (e.key === 'Escape') handleRenameCancel();
-                }}
-                autoFocus
-                style={{
-                  background: 'rgba(255,255,255,0.1)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  color: '#fff',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  fontWeight: 'bold'
-                }}
-              />
-              <button
-                onClick={handleRenameSubmit}
-                className="button"
-                style={{ padding: '4px 12px', fontSize: '14px' }}
-              >
-                Save
-              </button>
-              <button
-                onClick={handleRenameCancel}
-                className="button-secondary"
-                style={{ padding: '4px 12px', fontSize: '14px' }}
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        {isRenaming ? (
+          <div className="row" style={{ gap: '8px' }}>
+            <input
+              type="text"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleRenameSubmit();
+                if (e.key === 'Escape') handleRenameCancel();
+              }}
+              autoFocus
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: '#fff',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                fontSize: '16px',
+                fontWeight: 'bold'
+              }}
+            />
+            <button
+              onClick={handleRenameSubmit}
+              className="button"
+              style={{ padding: '4px 12px', fontSize: '14px' }}
+            >
+              Save
+            </button>
+            <button
+              onClick={handleRenameCancel}
+              className="button-secondary"
+              style={{ padding: '4px 12px', fontSize: '14px' }}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <>
+            <strong id="currentLabel">
+              {source.type === 'youtube' ? 'Live Stream' : 'Talk'}: {source.label}
+            </strong>
             <div className="row" style={{ gap: '8px', alignItems: 'center' }}>
-              <strong id="currentLabel">
-                {source.type === 'youtube' ? 'Live Stream' : 'Talk'}: {source.label}
-              </strong>
               {onRename && (
                 <button
                   onClick={handleRename}
@@ -203,10 +203,22 @@ export function VideoPlayerShell({
                   </svg>
                 </button>
               )}
+              {source.type === 'talks' && onDelete && (
+                <button
+                  id="deleteVideoBtn"
+                  className="button-secondary delete-video-btn"
+                  onClick={onDelete}
+                >
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                  </svg>
+                  <span>Delete</span>
+                </button>
+              )}
+              <span id="status" className="muted"></span>
             </div>
-          )}
-        </div>
-        <span id="status" className="muted"></span>
+          </>
+        )}
       </div>
 
       <div className="player">
@@ -272,21 +284,6 @@ export function VideoPlayerShell({
           </TimelineScrubber>
         </PlaybackControls>
       </div>
-
-      {source.type === 'talks' && onDelete && (
-        <div id="videoActions" className="video-actions">
-          <button
-            id="deleteVideoBtn"
-            className="button-secondary delete-video-btn"
-            onClick={onDelete}
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-            </svg>
-            Delete Talk
-          </button>
-        </div>
-      )}
     </div>
   );
 }

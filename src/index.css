@@ -115,47 +115,33 @@ li:hover {
   color: rgba(255,255,255,0.9);
 }
 
-button.delete-video-btn {
-  display: inline-flex !important;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 24px !important;
-  background: transparent !important;
-  border: 2px solid #ef4444 !important;
-  color: #ef4444 !important;
-  border-radius: 8px !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  cursor: pointer !important;
+/* Delete button in header */
+.delete-video-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.7);
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
   transition: all 0.15s ease;
-  box-shadow: none !important;
-  position: relative;
-  z-index: 10;
-  pointer-events: all !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
 }
 
-button.delete-video-btn:hover {
-  background: rgba(239, 68, 68, 0.1) !important;
-  border-color: #ef4444 !important;
-  color: #ef4444 !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2) !important;
+.delete-video-btn:hover {
+  background: rgba(255,100,100,0.1);
+  border-color: rgba(255,100,100,0.3);
+  color: rgba(255,100,100,0.9);
 }
 
-button.delete-video-btn:active {
-  transform: translateY(0) !important;
-  background: rgba(239, 68, 68, 0.2) !important;
-  border-color: #dc2626 !important;
+.delete-video-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
-button.delete-video-btn:focus-visible {
-  outline: 2px solid rgba(239, 68, 68, 0.5) !important;
-  outline-offset: 2px !important;
-}
 
-button.delete-video-btn svg {
-  fill: currentColor;
-}
 
 .hidden {
   display: none !important;
@@ -562,24 +548,7 @@ video {
   margin-top: 8px;
 }
 
-/* Delete button */
-.delete-video-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: rgba(255,0,0,0.1);
-  border: 1px solid rgba(255,0,0,0.2);
-  border-radius: 8px;
-  color: #ff4444;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
 
-.delete-video-btn:hover {
-  background: rgba(255,0,0,0.2);
-  border-color: rgba(255,0,0,0.3);
-}
 
 /* Popover */
 .popover {
