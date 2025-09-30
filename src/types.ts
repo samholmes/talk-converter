@@ -2,6 +2,8 @@ export interface VideoInfo {
   name: string;
   url: string;
   title?: string;
+  processId?: string;
+  isProcessing?: boolean;
 }
 
 export interface ListResponse {

@@ -27,6 +27,7 @@ export const api = {
 
   streamProcess(id: string, onMessage: (msg: any) => void): EventSource {
     const eventSource = new EventSource(`${API_BASE}/process/${id}/stream`);
+    
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -35,6 +36,7 @@ export const api = {
         console.error('Failed to parse SSE message:', err);
       }
     };
+    
     return eventSource;
   },
 

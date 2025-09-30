@@ -1,12 +1,15 @@
 import path from 'path';
 import fs from 'fs/promises';
 import type { Proc, TalkMetadata } from './types';
-import { processes, broadcast } from './state';
+import { processes, broadcast, subscribers, eventBuffer } from './state';
 import { rootDir, talksDir, sanitize } from './utils';
 
 export async function runProcess(proc: Proc) {
   processes.set(proc.id, proc);
   broadcast(proc.id, 'status', { status: proc.status, currentIndex: proc.currentIndex, total: proc.total });
+  
+  // Small delay to ensure SSE connections are established
+  await new Promise(resolve => setTimeout(resolve, 100));
   
   for (let i = 0; i < proc.segments.length; i++) {
     proc.currentIndex = i;
@@ -25,7 +28,14 @@ export async function runProcess(proc: Proc) {
       console.error(`Failed to create directory for ${seg.title}:`, error);
       proc.status = 'failed';
       proc.logs.push(`Failed to create directory: ${error}`);
-      broadcast(proc.id, 'status', { status: proc.status });
+      broadcast(proc.id, 'status', { status: proc.status, outputs: proc.outputs });
+      
+      // Cleanup after failed process
+      setTimeout(() => {
+        processes.delete(proc.id);
+        subscribers.delete(proc.id);
+        eventBuffer.delete(proc.id);
+      }, 30000); // 30 seconds
       return;
     }
 
@@ -48,7 +58,13 @@ export async function runProcess(proc: Proc) {
         proc.status = 'failed';
         proc.logs.push(`Source file not found: ${sourcePath}`);
         broadcast(proc.id, 'log', { type: 'stderr', text: `Error: Source file not found: ${sourcePath}` });
-        broadcast(proc.id, 'status', { status: proc.status });
+        broadcast(proc.id, 'status', { status: proc.status, outputs: proc.outputs });
+        
+        // Cleanup after failed process
+        setTimeout(() => {
+          processes.delete(proc.id);
+          subscribers.delete(proc.id);
+        }, 5000);
         return;
       }
       
@@ -87,7 +103,7 @@ export async function runProcess(proc: Proc) {
           if (!line) continue;
           proc.logs.push(line);
           if (proc.logs.length > 2000) proc.logs.splice(0, proc.logs.length - 2000);
-          broadcast(proc.id, 'log', { which, line });
+          broadcast(proc.id, 'log', { type: which, text: line });
         }
       }
     };
@@ -97,7 +113,14 @@ export async function runProcess(proc: Proc) {
 
     if (exitCode !== 0) {
       proc.status = 'failed';
-      broadcast(proc.id, 'status', { status: proc.status });
+      broadcast(proc.id, 'status', { status: proc.status, outputs: proc.outputs });
+      
+      // Cleanup after failed process
+      setTimeout(() => {
+        processes.delete(proc.id);
+        subscribers.delete(proc.id);
+        eventBuffer.delete(proc.id);
+      }, 30000); // 30 seconds
       return;
     }
 
@@ -125,5 +148,16 @@ export async function runProcess(proc: Proc) {
 
   proc.status = 'completed';
   proc.completedAt = Date.now();
+  
+  // Ensure the final status is broadcast
+  console.log(`Broadcasting completion for process ${proc.id} with outputs:`, proc.outputs);
   broadcast(proc.id, 'status', { status: proc.status, outputs: proc.outputs });
+  
+  // Keep the process in memory longer to ensure clients receive the final status
+  setTimeout(() => {
+    console.log(`Cleaning up process ${proc.id}`);
+    processes.delete(proc.id);
+    subscribers.delete(proc.id);
+    eventBuffer.delete(proc.id);
+  }, 30000); // 30 seconds
 }

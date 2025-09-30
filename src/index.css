@@ -154,6 +154,35 @@ button.delete-video-btn svg {
   font-weight: 500;
 }
 
+aside li.processing {
+  background: rgba(251, 191, 36, 0.1);
+  position: relative;
+}
+
+aside li.processing::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  background: #fbbf24;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.2);
+  }
+}
+
 .row { 
   display: flex; 
   align-items: center; 

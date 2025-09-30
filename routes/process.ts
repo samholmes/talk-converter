@@ -3,7 +3,7 @@ import { streamSSE } from 'hono/streaming';
 import path from 'path';
 import type { Segment, Proc } from './types';
 import { ensureDirs, youtubeDir, talksDir } from './utils';
-import { processes, broadcast, attachSubscriber } from './state';
+import { processes, broadcast, attachSubscriber, eventBuffer } from './state';
 import { runProcess } from './processor';
 
 const processRoutes = new Hono();
@@ -78,7 +78,7 @@ processRoutes.get('/api/process/:id/stream', (c) => {
   c.header('Content-Type', 'text/event-stream');
   
   return streamSSE(c, async (stream) => {
-    // For SSE, we need to send as default 'message' event
+    // Send SSE events as default 'message' events
     const send = (_event: string, data: string) => {
       stream.writeSSE({ data });
     };
@@ -88,8 +88,31 @@ processRoutes.get('/api/process/:id/stream', (c) => {
     await stream.writeSSE({ 
       data: JSON.stringify({ event: 'snapshot', data: proc }) 
     });
+    
+    // Send any buffered events
+    const buffer = eventBuffer.get(id);
+    if (buffer) {
+      for (const evt of buffer) {
+        try {
+          await stream.writeSSE({ event: evt.event, data: evt.data });
+        } catch {
+          // Stream might be closed
+          break;
+        }
+      }
+    }
+
+    // Keep connection alive with periodic heartbeats
+    const heartbeat = setInterval(async () => {
+      try {
+        await stream.writeSSE({ data: JSON.stringify({ event: 'heartbeat', ts: Date.now() }) });
+      } catch {
+        clearInterval(heartbeat);
+      }
+    }, 30000); // Every 30 seconds
 
     stream.onAbort(() => {
+      clearInterval(heartbeat);
       detach();
     });
   });

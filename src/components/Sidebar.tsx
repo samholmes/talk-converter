@@ -1,11 +1,9 @@
-import { VideoInfo, ProcessInfo, CurrentMedia } from '../types';
+import { VideoInfo, CurrentMedia } from '../types';
 
 interface SidebarProps {
   liveStreams: VideoInfo[];
   talks: VideoInfo[];
-  processes: ProcessInfo[];
   onSelectVideo: (type: 'youtube' | 'talks', video: VideoInfo) => void;
-  onSelectProcess: (processId: string) => void;
   selectedVideo: CurrentMedia | null;
   selectedProcess: string | null;
 }
@@ -13,9 +11,7 @@ interface SidebarProps {
 export function Sidebar({
   liveStreams,
   talks,
-  processes,
   onSelectVideo,
-  onSelectProcess,
   selectedVideo,
   selectedProcess
 }: SidebarProps) {
@@ -39,32 +35,22 @@ export function Sidebar({
       <div className="section">
         <h2>Talks</h2>
         <ul id="talkList">
-          {talks.map((video) => (
-            <li
-              key={video.name}
-              className={selectedVideo?.filename === video.name ? 'selected' : ''}
-              onClick={() => onSelectVideo('talks', video)}
-            >
-              {video.title || video.name}
-            </li>
-          ))}
-        </ul>
-      </div>
-      
-      <div className="section">
-        <h2>Processing</h2>
-        <ul id="procList">
-          {processes.map((proc) => (
-            <li
-              key={proc.id}
-              className={`${proc.status || 'processing'} ${selectedProcess === proc.id ? 'selected' : ''}`}
-              onClick={() => onSelectProcess(proc.id)}
-            >
-              {proc.status === 'done' ? 'Done: ' : 
-               proc.status === 'failed' ? 'Failed: ' : 
-               'Processing '}{proc.title}
-            </li>
-          ))}
+          {talks.map((video) => {
+            const isSelected = video.isProcessing 
+              ? selectedProcess === video.processId 
+              : selectedVideo?.filename === video.name;
+            const isProcessing = video.isProcessing;
+            
+            return (
+              <li
+                key={video.name}
+                className={`${isSelected ? 'selected' : ''} ${isProcessing ? 'processing' : ''}`}
+                onClick={() => onSelectVideo('talks', video)}
+              >
+                {video.title || video.name}
+              </li>
+            );
+          })}
         </ul>
       </div>
     </aside>

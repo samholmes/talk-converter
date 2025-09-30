@@ -23,6 +23,8 @@ export function ProcessLogs({ processId, onComplete }: ProcessLogsProps) {
     setLogs([]);
 
     const eventSource = api.streamProcess(processId, (msg: ProcessMessage) => {
+      console.log('Received SSE message:', msg);
+      
       if (msg.event === 'snapshot') {
         const snapshot = msg.data as ProcessSnapshot;
         setStatus(`Status: ${snapshot.status} (${snapshot.currentIndex}/${snapshot.total})`);
@@ -39,10 +41,12 @@ export function ProcessLogs({ processId, onComplete }: ProcessLogsProps) {
         }, 10);
       } else if (msg.event === 'status') {
         const { status: newStatus, outputs } = msg.data;
+        console.log('Received status update:', newStatus, 'with outputs:', outputs);
         setStatus(`Status: ${newStatus}`);
         
-        if ((newStatus === 'completed' || newStatus === 'failed') && outputs) {
-          onComplete(outputs, newStatus === 'completed' ? 'completed' : 'failed');
+        if ((newStatus === 'completed' || newStatus === 'failed')) {
+          console.log('Process completed/failed, calling onComplete');
+          onComplete(outputs || [], newStatus === 'completed' ? 'completed' : 'failed');
         }
       } else if (msg.event === 'progress') {
         const { currentIndex, total, segment } = msg.data;

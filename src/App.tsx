@@ -3,7 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { VideoPlayerShell } from './components/video-player/VideoPlayerShell';
 import { ProcessLogs } from './components/ProcessLogs';
 import { EmptyState } from './components/EmptyState';
-import type { VideoInfo, CurrentMedia, ProcessInfo } from './types';
+import type { VideoInfo, CurrentMedia } from './types';
 import { api } from './api';
 
 type AppMode = 'none' | 'video' | 'process';
@@ -12,7 +12,6 @@ export function App() {
   const [mode, setMode] = useState<AppMode>('none');
   const [liveStreams, setLiveStreams] = useState<VideoInfo[]>([]);
   const [talks, setTalks] = useState<VideoInfo[]>([]);
-  const [processes, setProcesses] = useState<ProcessInfo[]>([]);
   const [current, setCurrent] = useState<CurrentMedia>({
     type: null,
     filename: null,
@@ -38,50 +37,66 @@ export function App() {
   }, []);
 
   const selectVideo = (type: 'youtube' | 'talks', video: VideoInfo) => {
-    setCurrent({
-      type,
-      filename: video.name,
-      url: video.url
-    });
-    setMode('video');
-    setCurrentProcess(null);
+    if (video.isProcessing && video.processId) {
+      // If it's a processing video, show the process view
+      setCurrentProcess(video.processId);
+      setMode('process');
+      setCurrent({ type: null, filename: null, url: null });
+    } else {
+      // Normal video selection
+      setCurrent({
+        type,
+        filename: video.name,
+        url: video.url
+      });
+      setMode('video');
+      setCurrentProcess(null);
+    }
   };
 
-  const selectProcess = (processId: string) => {
-    setCurrentProcess(processId);
-    setMode('process');
-    setCurrent({ type: null, filename: null, url: null });
-  };
+
 
   const handleProcessStart = (processId: string, title?: string) => {
-    setProcesses(prev => [...prev, { 
-      id: processId, 
-      title: title || 'Processing...', 
-      status: 'processing' 
-    }]);
-    selectProcess(processId);
+    // Add a temporary processing talk to the talks list
+    const processingTalk: VideoInfo = {
+      name: processId,
+      url: '',
+      title: title || 'Processing...',
+      processId: processId,
+      isProcessing: true
+    };
+    
+    setTalks(prev => [...prev, processingTalk]);
+    
+    // Select the processing talk
+    selectVideo('talks', processingTalk);
   };
 
   const handleProcessComplete = async (processId: string, outputs: string[], status: 'completed' | 'failed') => {
-    // Update process status
-    setProcesses(prev => prev.map(p => 
-      p.id === processId ? { ...p, status: status === 'completed' ? 'done' : 'failed' } : p
-    ));
+    // Remove the processing talk from the list
+    setTalks(prev => prev.filter(t => t.processId !== processId));
     
-    await refreshLists();
+    if (status === 'failed') {
+      setMode('none');
+      setCurrent({ type: null, filename: null, url: null });
+      setCurrentProcess(null);
+      return;
+    }
     
-    // Auto-select the new video if available
+    // Refresh talks list to get the new talk
+    const data = await api.list();
+    setLiveStreams(data.liveStreams);
+    setTalks(data.talks);
+    
+    // Find and select the new video if available
     if (status === 'completed' && outputs && outputs.length > 0) {
       const outputPath = outputs[0];
       const dirName = outputPath.split('/').pop();
-      if (dirName) {
-        // Small delay to allow list to refresh
-        setTimeout(() => {
-          const newTalk = talks.find(t => t.name === dirName);
-          if (newTalk) {
-            selectVideo('talks', newTalk);
-          }
-        }, 500);
+      
+      // Find the newly created talk in the refreshed data
+      const newTalk = data.talks.find(t => t.name === dirName);
+      if (newTalk) {
+        selectVideo('talks', newTalk);
       }
     }
   };
@@ -109,9 +124,7 @@ export function App() {
       <Sidebar
         liveStreams={liveStreams}
         talks={talks}
-        processes={processes}
         onSelectVideo={selectVideo}
-        onSelectProcess={selectProcess}
         selectedVideo={mode === 'video' ? current : null}
         selectedProcess={mode === 'process' ? currentProcess : null}
       />
