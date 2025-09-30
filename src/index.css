@@ -96,10 +96,10 @@ li:hover {
 }
 
 /* Edit button */
-.edit-btn {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.2);
-  color: rgba(255,255,255,0.7);
+button.edit-btn {
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  color: rgba(255,255,255,0.7) !important;
   padding: 4px 8px;
   border-radius: 6px;
   cursor: pointer;
@@ -109,17 +109,17 @@ li:hover {
   justify-content: center;
 }
 
-.edit-btn:hover {
-  background: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.3);
-  color: rgba(255,255,255,0.9);
+button.edit-btn:hover {
+  background: rgba(255,255,255,0.05) !important;
+  border-color: rgba(255,255,255,0.3) !important;
+  color: rgba(255,255,255,0.9) !important;
 }
 
 /* Delete button in header */
-.delete-video-btn {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.2);
-  color: rgba(255,255,255,0.7);
+button.delete-video-btn {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  color: #ef4444 !important;
   padding: 4px 12px;
   border-radius: 6px;
   cursor: pointer;
@@ -130,13 +130,13 @@ li:hover {
   font-size: 14px;
 }
 
-.delete-video-btn:hover {
-  background: rgba(255,100,100,0.1);
-  border-color: rgba(255,100,100,0.3);
-  color: rgba(255,100,100,0.9);
+button.delete-video-btn:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  color: #ff6b6b !important;
 }
 
-.delete-video-btn svg {
+button.delete-video-btn svg {
   width: 16px;
   height: 16px;
 }

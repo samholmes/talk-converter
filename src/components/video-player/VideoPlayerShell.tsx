@@ -206,7 +206,7 @@ export function VideoPlayerShell({
               {source.type === 'talks' && onDelete && (
                 <button
                   id="deleteVideoBtn"
-                  className="button-secondary delete-video-btn"
+                  className="delete-video-btn"
                   onClick={onDelete}
                 >
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
