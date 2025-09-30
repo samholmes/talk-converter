@@ -46,5 +46,25 @@ export const api = {
     });
     if (!response.ok) throw new Error('Failed to delete talk');
     return response.json();
+  },
+
+  async renameTalk(filename: string, newName: string) {
+    const response = await fetch(`${API_BASE}/talks/${encodeURIComponent(filename)}/rename`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName })
+    });
+    if (!response.ok) throw new Error('Failed to rename talk');
+    return response.json();
+  },
+
+  async renameStream(filename: string, newName: string) {
+    const response = await fetch(`${API_BASE}/streams/${encodeURIComponent(filename)}/rename`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newName })
+    });
+    if (!response.ok) throw new Error('Failed to rename stream');
+    return response.json();
   }
 };

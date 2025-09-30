@@ -26,7 +26,7 @@ export function Sidebar({
               className={selectedVideo?.filename === video.name ? 'selected' : ''}
               onClick={() => onSelectVideo('youtube', video)}
             >
-              {video.name}
+              {video.title || video.name}
             </li>
           ))}
         </ul>

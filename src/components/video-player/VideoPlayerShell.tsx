@@ -9,18 +9,22 @@ interface VideoPlayerShellProps {
   source: VideoSource;
   onProcessStart: (processId: string, title: string) => void;
   onDelete?: () => void;
+  onRename?: (newName: string) => void;
 }
 
 export function VideoPlayerShell({
   source,
   onProcessStart,
   onDelete,
+  onRename,
 }: VideoPlayerShellProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [segmentState, setSegmentState] = useState<{ mode: 'idle' | 'marking' | 'complete'; start?: number; end?: number }>({ mode: 'idle' });
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
 
   const { launch } = useProcessLauncher({
     sourceType: source.type,
@@ -125,13 +129,82 @@ export function VideoPlayerShell({
     );
   };
 
+  const handleRename = () => {
+    const currentTitle = source.label.replace('.mp4', '');
+    setRenameValue(currentTitle);
+    setIsRenaming(true);
+  };
+
+  const handleRenameSubmit = () => {
+    if (renameValue.trim() && onRename) {
+      onRename(renameValue.trim());
+      setIsRenaming(false);
+    }
+  };
+
+  const handleRenameCancel = () => {
+    setIsRenaming(false);
+    setRenameValue('');
+  };
+
   return (
     <div id="videoUI">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <div className="row">
-          <strong id="currentLabel">
-            {source.type === 'youtube' ? 'Live Stream' : 'Talk'}: {source.label}
-          </strong>
+          {isRenaming ? (
+            <div className="row" style={{ gap: '8px' }}>
+              <input
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRenameSubmit();
+                  if (e.key === 'Escape') handleRenameCancel();
+                }}
+                autoFocus
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#fff',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '16px',
+                  fontWeight: 'bold'
+                }}
+              />
+              <button
+                onClick={handleRenameSubmit}
+                className="button"
+                style={{ padding: '4px 12px', fontSize: '14px' }}
+              >
+                Save
+              </button>
+              <button
+                onClick={handleRenameCancel}
+                className="button-secondary"
+                style={{ padding: '4px 12px', fontSize: '14px' }}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="row" style={{ gap: '8px', alignItems: 'center' }}>
+              <strong id="currentLabel">
+                {source.type === 'youtube' ? 'Live Stream' : 'Talk'}: {source.label}
+              </strong>
+              {onRename && (
+                <button
+                  onClick={handleRename}
+                  className="edit-btn"
+                  title="Rename"
+                >
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
         </div>
         <span id="status" className="muted"></span>
       </div>

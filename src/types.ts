@@ -15,6 +15,7 @@ export interface CurrentMedia {
   type: 'youtube' | 'talks' | null;
   filename: string | null;
   url: string | null;
+  title?: string | null;
 }
 
 export interface Segment {

@@ -15,7 +15,8 @@ export function App() {
   const [current, setCurrent] = useState<CurrentMedia>({
     type: null,
     filename: null,
-    url: null
+    url: null,
+    title: null
   });
   const [currentProcess, setCurrentProcess] = useState<string | null>(null);
 
@@ -41,13 +42,14 @@ export function App() {
       // If it's a processing video, show the process view
       setCurrentProcess(video.processId);
       setMode('process');
-      setCurrent({ type: null, filename: null, url: null });
+      setCurrent({ type: null, filename: null, url: null, title: null });
     } else {
       // Normal video selection
       setCurrent({
         type,
         filename: video.name,
-        url: video.url
+        url: video.url,
+        title: video.title
       });
       setMode('video');
       setCurrentProcess(null);
@@ -78,7 +80,7 @@ export function App() {
     
     if (status === 'failed') {
       setMode('none');
-      setCurrent({ type: null, filename: null, url: null });
+      setCurrent({ type: null, filename: null, url: null, title: null });
       setCurrentProcess(null);
       return;
     }
@@ -111,11 +113,45 @@ export function App() {
       await refreshLists();
       if (current.filename === filename) {
         setMode('none');
-        setCurrent({ type: null, filename: null, url: null });
+        setCurrent({ type: null, filename: null, url: null, title: null });
       }
     } catch (error) {
       console.error('Failed to delete talk:', error);
       alert('Failed to delete talk');
+    }
+  };
+
+  const handleRename = async (type: 'youtube' | 'talks', filename: string, newName: string) => {
+    try {
+      if (type === 'talks') {
+        await api.renameTalk(filename, newName);
+      } else {
+        await api.renameStream(filename, newName);
+      }
+      
+      // Refresh lists after rename
+      const data = await api.list();
+      setLiveStreams(data.liveStreams);
+      setTalks(data.talks);
+      
+      // Update current media if it was renamed
+      if (current.filename === filename) {
+        const sanitizedName = newName.replace(/[^a-zA-Z0-9]/g, '_');
+        const videos = type === 'talks' ? data.talks : data.liveStreams;
+        const newVideo = videos.find(v => v.name === sanitizedName);
+          
+        if (newVideo) {
+          setCurrent({
+            type,
+            filename: newVideo.name,
+            url: newVideo.url,
+            title: newVideo.title
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to rename ${type === 'talks' ? 'talk' : 'stream'}:`, error);
+      alert(`Failed to rename ${type === 'talks' ? 'talk' : 'stream'}`);
     }
   };
 
@@ -135,10 +171,11 @@ export function App() {
               type: current.type,
               filename: current.filename,
               url: current.url,
-              label: current.filename,
+              label: current.title || current.filename,
             }}
             onProcessStart={handleProcessStart}
             onDelete={current.type === 'talks' ? () => handleDelete(current.filename!) : undefined}
+            onRename={(newName) => handleRename(current.type!, current.filename!, newName)}
           />
         )}
         {mode === 'process' && currentProcess && (
