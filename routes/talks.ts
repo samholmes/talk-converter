@@ -273,15 +273,28 @@ talksRoutes.post('/api/talks/:filename/add-intro', async (c) => {
       return c.json({ success: false, error: 'Intro video not found' }, 404);
     }
     
-    // Run ffmpeg to concatenate using filter_complex for proper sync
+    // Get intro duration for crossfade timing
+    const introProbe = Bun.spawn([
+      'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+      '-of', 'default=noprint_wrappers=1:nokey=1', introPath
+    ], { stdout: 'pipe' });
+    const introDurationText = await new Response(introProbe.stdout).text();
+    const introDuration = parseFloat(introDurationText.trim());
+    const xfadeOffset = Math.floor(introDuration - 1); // Start crossfade 1s before intro ends
+    
+    // Run ffmpeg to concatenate using filter_complex with crossfade
     const p = Bun.spawn([
       'ffmpeg', '-y',
       '-i', introPath,
       '-i', videoPath,
       '-filter_complex',
-      '[0:v]fps=30,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1[v0];' +
-      '[1:v]fps=30,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1[v1];' +
-      '[v0][0:a][v1][1:a]concat=n=2:v=1:a=1[vout][aout]',
+      // Normalize and prepare video streams
+      '[0:v]fps=30,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[v0];' +
+      '[1:v]fps=30,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[v1];' +
+      // Apply video crossfade (videos will overlap by 1 second)
+      `[v0][v1]xfade=transition=fade:duration=1:offset=${xfadeOffset},format=yuv420p[vout];` +
+      // Concatenate audio streams normally (no crossfade to avoid complexity)
+      '[0:a][1:a]concat=n=2:v=0:a=1[aout]',
       '-map', '[vout]',
       '-map', '[aout]',
       '-c:v', 'libx264', '-preset', 'fast',
