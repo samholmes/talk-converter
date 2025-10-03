@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import fs from 'fs/promises';
 import path from 'path';
-import { ensureDirs, talksDir, sanitize } from './utils';
+import { ensureDirs, talksDir, sanitize, rootDir } from './utils';
+import type { TalkMetadata, TalkEdit } from './types';
 
 const talksRoutes = new Hono();
 
@@ -133,6 +134,124 @@ talksRoutes.delete('/api/talks/:filename', async (c) => {
     return c.json({ success: true });
   } catch (error) {
     return c.json({ success: false, error: 'Failed to delete file' }, 500);
+  }
+});
+
+// Get talk metadata
+talksRoutes.get('/api/talks/:filename/metadata', async (c) => {
+  await ensureDirs();
+  const filename = decodeURIComponent(c.req.param('filename'));
+  
+  if (filename.includes('..') || filename.includes('/')) {
+    return c.text('Invalid path', 400);
+  }
+  
+  const dirName = filename.replace(/\.mp4$/i, '');
+  const dirPath = path.join(talksDir, dirName);
+  
+  try {
+    const stats = await fs.stat(dirPath).catch(() => null);
+    if (!stats?.isDirectory()) {
+      return c.json({ success: false, error: 'Talk not found' }, 404);
+    }
+    
+    const metadataPath = path.join(dirPath, 'metadata.json');
+    let metadata: TalkMetadata;
+    try {
+      metadata = JSON.parse(await fs.readFile(metadataPath, 'utf-8'));
+    } catch {
+      metadata = { title: dirName, createdAt: Date.now() };
+    }
+    
+    return c.json(metadata);
+  } catch (error) {
+    console.error('Error fetching metadata:', error);
+    return c.json({ success: false, error: 'Failed to fetch metadata' }, 500);
+  }
+});
+
+// Add intro to a talk video
+talksRoutes.post('/api/talks/:filename/add-intro', async (c) => {
+  await ensureDirs();
+  const filename = decodeURIComponent(c.req.param('filename'));
+  
+  if (filename.includes('..') || filename.includes('/')) {
+    return c.text('Invalid path', 400);
+  }
+  
+  const dirName = filename.replace(/\.mp4$/i, '');
+  const dirPath = path.join(talksDir, dirName);
+  
+  try {
+    const stats = await fs.stat(dirPath).catch(() => null);
+    if (!stats?.isDirectory()) {
+      return c.json({ success: false, error: 'Talk not found' }, 404);
+    }
+    
+    const videoPath = path.join(dirPath, 'video.mp4');
+    const videoStats = await fs.stat(videoPath).catch(() => null);
+    if (!videoStats) {
+      return c.json({ success: false, error: 'Talk video not found' }, 404);
+    }
+    
+    // Read metadata
+    const metadataPath = path.join(dirPath, 'metadata.json');
+    let metadata: TalkMetadata;
+    try {
+      metadata = JSON.parse(await fs.readFile(metadataPath, 'utf-8'));
+    } catch {
+      metadata = { title: dirName, createdAt: Date.now() };
+    }
+    
+    // Generate timestamp-based filename
+    const timestamp = Date.now();
+    const outputFilename = `${timestamp}.mp4`;
+    const outputPath = path.join(dirPath, outputFilename);
+    
+    // Create concat list for ffmpeg
+    const introPath = path.join(rootDir, 'assets', 'DEVxIntro.mp4');
+    const introStats = await fs.stat(introPath).catch(() => null);
+    if (!introStats) {
+      return c.json({ success: false, error: 'Intro video not found' }, 404);
+    }
+    
+    const concatListPath = path.join(dirPath, 'concat-list.txt');
+    const concatList = `file '${introPath}'\nfile '${videoPath}'`;
+    await fs.writeFile(concatListPath, concatList);
+    
+    // Run ffmpeg to concatenate
+    const p = Bun.spawn([
+      'ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', concatListPath,
+      '-c', 'copy', outputPath
+    ], { stdout: 'pipe', stderr: 'pipe' });
+    
+    await p.exited;
+    
+    // Clean up concat list
+    await fs.unlink(concatListPath).catch(() => {});
+    
+    if (p.exitCode !== 0) {
+      return c.json({ success: false, error: 'Failed to concatenate videos' }, 500);
+    }
+    
+    // Update metadata
+    const edit: TalkEdit = {
+      filename: outputFilename,
+      timestamp,
+      description: 'Added intro clip'
+    };
+    
+    if (!metadata.edits) {
+      metadata.edits = [];
+    }
+    metadata.edits.push(edit);
+    
+    await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+    
+    return c.json({ success: true, edit });
+  } catch (error) {
+    console.error('Error adding intro:', error);
+    return c.json({ success: false, error: 'Failed to add intro' }, 500);
   }
 });
 

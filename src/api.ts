@@ -66,5 +66,19 @@ export const api = {
     });
     if (!response.ok) throw new Error('Failed to rename stream');
     return response.json();
+  },
+
+  async addIntroToTalk(filename: string) {
+    const response = await fetch(`${API_BASE}/talks/${encodeURIComponent(filename)}/add-intro`, {
+      method: 'POST'
+    });
+    if (!response.ok) throw new Error('Failed to add intro');
+    return response.json();
+  },
+
+  async getTalkMetadata(filename: string) {
+    const response = await fetch(`${API_BASE}/talks/${encodeURIComponent(filename)}/metadata`);
+    if (!response.ok) throw new Error('Failed to fetch metadata');
+    return response.json();
   }
 };

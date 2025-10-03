@@ -4,11 +4,18 @@ export interface Segment {
   title: string;
 }
 
+export interface TalkEdit {
+  filename: string;
+  timestamp: number;
+  description: string;
+}
+
 export interface TalkMetadata {
   title: string;
   createdAt: number;
   sourceVideo?: string;
   duration?: number;
+  edits?: TalkEdit[];
 }
 
 export interface Proc {

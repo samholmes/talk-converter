@@ -189,6 +189,98 @@ mediaRoutes.get('/media/youtube/:dir/video.mp4', async (c) => {
   }
 });
 
+// Handle edited talk paths like /media/talks/React_Test/1234567890.mp4
+mediaRoutes.get('/media/talks/:dir/:filename', async (c) => {
+  try {
+    await ensureDirs();
+    const dir = decodeURIComponent(c.req.param('dir'));
+    const filename = decodeURIComponent(c.req.param('filename'));
+    
+    if (dir.includes('..') || dir.includes('/') || filename.includes('..') || filename.includes('/')) {
+      return c.text('Invalid path', 400);
+    }
+    
+    if (!filename.endsWith('.mp4')) {
+      return c.text('Invalid file type', 400);
+    }
+    
+    const fp = path.join(talksDir, dir, filename);
+    
+    console.log('Media request (edited talk):', { dir, filename, fp });
+
+    // Ensure faststart version for proper scrubbing
+    const target = await ensureFastStart(fp);
+    
+    // Check if file exists
+    try {
+      await fs.access(target.path);
+    } catch {
+      return c.notFound();
+    }
+    
+    const stats = await fs.stat(target.path);
+    const size = stats.size;
+    const range = c.req.header('range') || c.req.header('Range');
+
+    if (range) {
+      const m = /bytes=(\d*)-(\d*)/.exec(range);
+      if (!m) {
+        return new Response('Malformed Range', { 
+          status: 416, 
+          headers: { 'Content-Range': `bytes */${size}` } 
+        });
+      }
+      
+      let start = m[1] ? parseInt(m[1], 10) : 0;
+      let end = m[2] ? parseInt(m[2], 10) : size - 1;
+      
+      if (isNaN(start) && !isNaN(end)) {
+        start = size - end;
+        end = size - 1;
+      }
+      
+      if (isNaN(start) || isNaN(end) || start > end || start < 0 || end >= size) {
+        return new Response('Unsatisfiable Range', { 
+          status: 416, 
+          headers: { 'Content-Range': `bytes */${size}` } 
+        });
+      }
+      
+      // Read the file chunk
+      const fileHandle = await fs.open(target.path, 'r');
+      const buffer = Buffer.alloc(end - start + 1);
+      await fileHandle.read(buffer, 0, buffer.length, start);
+      await fileHandle.close();
+      
+      return new Response(buffer, {
+        status: 206,
+        headers: {
+          'Content-Type': 'video/mp4',
+          'Accept-Ranges': 'bytes',
+          'Content-Range': `bytes ${start}-${end}/${size}`,
+          'Content-Length': String(end - start + 1),
+          'Cache-Control': 'no-cache',
+        },
+      });
+    }
+
+    // Full file response
+    const bunFile = Bun.file(target.path);
+    return new Response(bunFile.stream(), {
+      status: 200,
+      headers: {
+        'Content-Type': 'video/mp4',
+        'Accept-Ranges': 'bytes',
+        'Content-Length': String(size),
+        'Cache-Control': 'no-cache',
+      },
+    });
+  } catch (error) {
+    console.error('Media handler error (edited talk):', error);
+    return c.text('Internal Server Error: ' + (error instanceof Error ? error.message : String(error)), 500);
+  }
+});
+
 // Handle nested talk paths like /media/talks/React_Test/video.mp4
 mediaRoutes.get('/media/talks/:dir/video.mp4', async (c) => {
   try {

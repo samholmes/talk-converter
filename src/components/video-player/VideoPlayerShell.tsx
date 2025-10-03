@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import type { VideoSource, SegmentDraft } from './types';
+import type { TalkMetadata } from '../../types';
 import { PlaybackControls } from './PlaybackControls';
 import { TimelineScrubber } from './TimelineScrubber';
 import { SegmentPopover } from './SegmentPopover';
 import { useProcessLauncher } from './ProcessLauncher';
+import { api } from '../../api';
 
 interface VideoPlayerShellProps {
   source: VideoSource;
@@ -25,6 +27,9 @@ export function VideoPlayerShell({
   const [segmentState, setSegmentState] = useState<{ mode: 'idle' | 'marking' | 'complete'; start?: number; end?: number }>({ mode: 'idle' });
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
+  const [metadata, setMetadata] = useState<TalkMetadata | null>(null);
+  const [selectedEdit, setSelectedEdit] = useState<string | null>(null);
+  const [isAddingIntro, setIsAddingIntro] = useState(false);
 
   const { launch } = useProcessLauncher({
     sourceType: source.type,
@@ -43,16 +48,70 @@ export function VideoPlayerShell({
   }, [source.url]);
 
   useEffect(() => {
+    if (source.type === 'talks') {
+      api.getTalkMetadata(source.filename).then((data) => {
+        setMetadata(data);
+      }).catch((err) => {
+        console.error('Failed to load metadata:', err);
+      });
+    }
+  }, [source.type, source.filename]);
+
+  const handleAddIntro = async () => {
+    if (source.type !== 'talks') return;
+
+    setIsAddingIntro(true);
+    try {
+      const result = await api.addIntroToTalk(source.filename);
+      if (result.success) {
+        const updatedMetadata = await api.getTalkMetadata(source.filename);
+        setMetadata(updatedMetadata);
+        if (result.edit) {
+          setSelectedEdit(result.edit.filename);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to add intro:', error);
+      alert('Failed to add intro');
+    } finally {
+      setIsAddingIntro(false);
+    }
+  };
+
+  const handleSelectEdit = (filename: string | null) => {
+    setSelectedEdit(filename);
+    if (videoRef.current) {
+      const baseUrl = `/media/talks/${encodeURIComponent(source.filename)}`;
+      const newUrl = filename ? `${baseUrl}/${filename}` : `${baseUrl}/video.mp4`;
+      videoRef.current.src = newUrl;
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+    }
+  };
+
+  const formatEditDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!videoRef.current) return;
-      
+
       // Only handle arrow keys if no input is focused
-      const isInputFocused = document.activeElement?.tagName === 'INPUT' || 
-                            document.activeElement?.tagName === 'TEXTAREA';
+      const isInputFocused = document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA';
       if (isInputFocused) return;
 
       const minTime = segmentState.mode === 'marking' ? segmentState.start || 0 : 0;
-      
+
       switch (e.key) {
         case 'ArrowLeft':
           e.preventDefault();
@@ -211,7 +270,7 @@ export function VideoPlayerShell({
                   title="Rename"
                 >
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
                   </svg>
                 </button>
               )}
@@ -274,7 +333,7 @@ export function VideoPlayerShell({
                     }}
                   />
                 )}
-                
+
                 {/* Render the title popover */}
                 {segmentState.mode === 'complete' && segmentState.start !== undefined && segmentState.end !== undefined && (
                   <SegmentPopover
@@ -296,6 +355,72 @@ export function VideoPlayerShell({
           </TimelineScrubber>
         </PlaybackControls>
       </div>
+
+      {source.type === 'talks' && (
+        <>
+          <div className="tools-pane" style={{ marginTop: '16px', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>Tools</h3>
+            <button
+              onClick={handleAddIntro}
+              disabled={isAddingIntro}
+              className="button"
+              style={{ padding: '6px 12px', fontSize: '14px' }}
+            >
+              {isAddingIntro ? 'Adding Intro...' : 'Add Intro'}
+            </button>
+          </div>
+
+          {metadata && (
+            <div className="edits-list" style={{ marginTop: '16px', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+              <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>Versions</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <button
+                  onClick={() => handleSelectEdit(null)}
+                  className={selectedEdit === null ? 'edit-item selected' : 'edit-item'}
+                  style={{
+                    padding: '8px 12px',
+                    background: selectedEdit === null ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '4px',
+                    color: '#fff',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontSize: '13px'
+                  }}
+                >
+                  <div style={{ fontWeight: '500' }}>Original</div>
+                  <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
+                    {formatEditDate(metadata.createdAt)}
+                  </div>
+                </button>
+
+                {metadata.edits?.map((edit) => (
+                  <button
+                    key={edit.filename}
+                    onClick={() => handleSelectEdit(edit.filename)}
+                    className={selectedEdit === edit.filename ? 'edit-item selected' : 'edit-item'}
+                    style={{
+                      padding: '8px 12px',
+                      background: selectedEdit === edit.filename ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '4px',
+                      color: '#fff',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <div style={{ fontWeight: '500' }}>{edit.description}</div>
+                    <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
+                      {formatEditDate(edit.timestamp)}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
