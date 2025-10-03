@@ -201,7 +201,7 @@ export function VideoPlayerShell({
         ) : (
           <>
             <strong id="currentLabel">
-              {source.type === 'youtube' ? 'Live Stream' : 'Talk'}: {source.label}
+              {source.label}
             </strong>
             <div className="row" style={{ gap: '8px', alignItems: 'center' }}>
               {onRename && (
