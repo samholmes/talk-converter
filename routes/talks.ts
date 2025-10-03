@@ -266,29 +266,30 @@ talksRoutes.post('/api/talks/:filename/add-intro', async (c) => {
     const outputFilename = `${timestamp}.mp4`;
     const outputPath = path.join(dirPath, outputFilename);
     
-    // Create concat list for ffmpeg
+    // Check intro file exists
     const introPath = path.join(rootDir, 'assets', 'DEVxIntro.mp4');
     const introStats = await fs.stat(introPath).catch(() => null);
     if (!introStats) {
       return c.json({ success: false, error: 'Intro video not found' }, 404);
     }
     
-    const concatListPath = path.join(dirPath, 'concat-list.txt');
-    const concatList = `file '${introPath}'\nfile '${videoPath}'`;
-    await fs.writeFile(concatListPath, concatList);
-    
-    // Run ffmpeg to concatenate
+    // Run ffmpeg to concatenate using filter_complex for proper sync
     const p = Bun.spawn([
-      'ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', concatListPath,
-      '-c:v', 'libx264', '-preset', 'fast', 
+      'ffmpeg', '-y',
+      '-i', introPath,
+      '-i', videoPath,
+      '-filter_complex',
+      '[0:v]fps=30,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1[v0];' +
+      '[1:v]fps=30,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1[v1];' +
+      '[v0][0:a][v1][1:a]concat=n=2:v=1:a=1[vout][aout]',
+      '-map', '[vout]',
+      '-map', '[aout]',
+      '-c:v', 'libx264', '-preset', 'fast',
       '-c:a', 'aac', '-ar', '48000', '-b:a', '192k',
       outputPath
     ], { stdout: 'pipe', stderr: 'pipe' });
     
     await p.exited;
-    
-    // Clean up concat list
-    await fs.unlink(concatListPath).catch(() => {});
     
     if (p.exitCode !== 0) {
       return c.json({ success: false, error: 'Failed to concatenate videos' }, 500);
