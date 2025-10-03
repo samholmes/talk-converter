@@ -16,6 +16,7 @@ export interface Proc {
   sourceType: 'youtube' | 'talks';
   filename: string;
   sourcePath: string;
+  sourceVideoId?: string;
   segments: Segment[];
   status: 'running' | 'completed' | 'failed';
   startedAt: number;

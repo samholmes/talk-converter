@@ -74,9 +74,11 @@ streamsRoutes.put('/api/streams/:filename/rename', async (c) => {
       }
       
       // Create metadata
+      const originalId = path.parse(filename).name;
       const metadata = {
         title: newName,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        sourceVideo: originalId
       };
       await fs.writeFile(path.join(newDirPath, 'metadata.json'), JSON.stringify(metadata, null, 2));
     }

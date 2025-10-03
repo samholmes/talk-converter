@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
+import fs from 'fs/promises';
 import path from 'path';
 import type { Segment, Proc } from './types';
 import { ensureDirs, youtubeDir, talksDir } from './utils';
@@ -7,6 +8,83 @@ import { processes, broadcast, attachSubscriber, eventBuffer } from './state';
 import { runProcess } from './processor';
 
 const processRoutes = new Hono();
+
+const safeStat = async (target: string) => fs.stat(target).catch(() => null);
+
+interface StreamMetadata {
+  title?: string;
+  createdAt?: number;
+  sourceVideo?: string;
+  [key: string]: unknown;
+}
+
+const resolveTalkSource = async (filename: string) => {
+  const normalized = filename.replace(/\.mp4$/i, '');
+  const dirPath = path.join(talksDir, normalized);
+  const dirStats = await safeStat(dirPath);
+
+  if (dirStats?.isDirectory()) {
+    const videoPath = path.join(dirPath, 'video.mp4');
+    const videoStats = await safeStat(videoPath);
+    if (videoStats) {
+      return videoPath;
+    }
+    return null;
+  }
+
+  const legacyName = filename.endsWith('.mp4') ? filename : `${normalized}.mp4`;
+  const legacyPath = path.join(talksDir, legacyName);
+  const legacyStats = await safeStat(legacyPath);
+  if (legacyStats) {
+    return legacyPath;
+  }
+
+  return null;
+};
+
+const resolveYoutubeSource = async (filename: string) => {
+  const normalized = filename.replace(/\.mp4$/i, '');
+  const dirPath = path.join(youtubeDir, normalized);
+  const metadataPath = path.join(dirPath, 'metadata.json');
+  let metadata: StreamMetadata | null = null;
+
+  try {
+    const raw = await fs.readFile(metadataPath, 'utf-8');
+    metadata = JSON.parse(raw) as StreamMetadata;
+  } catch {
+    metadata = null;
+  }
+
+  const candidates = [
+    path.join(dirPath, 'video.mp4'),
+    path.join(dirPath, 'video.fs.mp4'),
+    path.join(youtubeDir, `${normalized}.mp4`),
+    path.join(youtubeDir, filename.endsWith('.mp4') ? filename : `${filename}.mp4`),
+  ];
+
+  let sourceVideoId: string | undefined = typeof metadata?.sourceVideo === 'string'
+    ? metadata!.sourceVideo!
+    : undefined;
+
+  if (!sourceVideoId) {
+    const maybeId = path.extname(filename).toLowerCase() === '.mp4'
+      ? path.parse(filename).name
+      : filename;
+    if (/^[A-Za-z0-9_-]{6,}$/.test(maybeId)) {
+      sourceVideoId = maybeId;
+    }
+  }
+
+  for (const candidate of candidates) {
+    const stats = await safeStat(candidate);
+    if (stats?.isFile()) {
+      return { sourcePath: candidate, sourceVideoId };
+    }
+  }
+
+  const fallbackPath = sourceVideoId ? path.join(youtubeDir, `${sourceVideoId}.mp4`) : null;
+  return { sourcePath: fallbackPath, sourceVideoId };
+};
 
 // Start a segmentation process
 processRoutes.post('/api/process', async (c) => {
@@ -19,16 +97,51 @@ processRoutes.post('/api/process', async (c) => {
   if (!body || !body.sourceType || !body.filename || !Array.isArray(body.segments)) {
     return c.text('Invalid payload', 400);
   }
-  
-  const base = body.sourceType === 'youtube' ? youtubeDir : talksDir;
-  const sourcePath = path.join(base, body.filename);
+
+  const { sourceType } = body;
+  const filename = body.filename;
+
+  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    return c.text('Invalid filename', 400);
+  }
+
+  let sourcePath: string | null = null;
+  let sourceVideoId: string | undefined;
+
+  if (sourceType === 'talks') {
+    sourcePath = await resolveTalkSource(filename);
+    if (!sourcePath) {
+      console.warn('Talk source video not found', { filename });
+      return c.json({ success: false, error: 'Talk video not found' }, 404);
+    }
+  } else {
+    const resolved = await resolveYoutubeSource(filename);
+    sourcePath = resolved.sourcePath;
+    sourceVideoId = resolved.sourceVideoId;
+
+    if (!sourcePath && !sourceVideoId) {
+      console.warn('YouTube source could not be resolved', { filename });
+      return c.json({ success: false, error: 'Stream video not found' }, 404);
+    }
+  }
+
+  if (!sourcePath) {
+    if (sourceType === 'youtube' && sourceVideoId) {
+      sourcePath = path.join(youtubeDir, `${sourceVideoId}.mp4`);
+    } else {
+      console.warn('Source path resolution failed', { filename, sourceType });
+      return c.json({ success: false, error: 'Source video not accessible' }, 500);
+    }
+  }
+
   const id = crypto.randomUUID();
 
   const proc: Proc = {
     id,
-    sourceType: body.sourceType,
-    filename: body.filename,
+    sourceType,
+    filename,
     sourcePath,
+    sourceVideoId,
     segments: body.segments,
     status: 'running',
     startedAt: Date.now(),

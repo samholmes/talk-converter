@@ -92,7 +92,8 @@ talksRoutes.put('/api/talks/:filename/rename', async (c) => {
       // Create metadata
       const metadata = {
         title: newName,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        sourceVideo: filename
       };
       await fs.writeFile(path.join(newDirPath, 'metadata.json'), JSON.stringify(metadata, null, 2));
     }
