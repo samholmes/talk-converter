@@ -30,6 +30,7 @@ export function VideoPlayerShell({
   const [metadata, setMetadata] = useState<TalkMetadata | null>(null);
   const [selectedEdit, setSelectedEdit] = useState<string | null>(null);
   const [isAddingIntro, setIsAddingIntro] = useState(false);
+  const [showControls, setShowControls] = useState(true);
 
   const { launch } = useProcessLauncher({
     sourceType: source.type,
@@ -314,7 +315,11 @@ export function VideoPlayerShell({
         )}
       </div>
 
-      <div className="player">
+      <div 
+        className="player"
+        onMouseEnter={() => setShowControls(true)}
+        onMouseLeave={() => setShowControls(false)}
+      >
         <video
           ref={videoRef}
           id="player"
@@ -330,6 +335,7 @@ export function VideoPlayerShell({
           onTogglePlay={handleTogglePlay}
           currentTime={currentTime}
           duration={duration}
+          visible={showControls}
         >
           <TimelineScrubber
             duration={duration}

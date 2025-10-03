@@ -6,6 +6,7 @@ interface PlaybackControlsProps {
   currentTime: number;
   duration: number;
   children?: ReactNode;
+  visible?: boolean;
 }
 
 export function PlaybackControls({
@@ -14,6 +15,7 @@ export function PlaybackControls({
   currentTime,
   duration,
   children,
+  visible = true,
 }: PlaybackControlsProps) {
   const formatTime = (seconds: number): string => {
     const s = Math.max(0, Math.floor(seconds || 0));
@@ -26,7 +28,7 @@ export function PlaybackControls({
   };
 
   return (
-    <div className="glass-controls">
+    <div className="glass-controls" style={{ opacity: visible ? 1 : 0 }}>
       <div className="left">
         <button
           id="btnPlay"

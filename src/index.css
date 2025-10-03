@@ -638,6 +638,8 @@ video {
   align-items: center;
   gap: 16px;
   overflow: visible;
+  transition: opacity 0.3s ease;
+  pointer-events: auto;
 }
 
 .glass-controls .left {
