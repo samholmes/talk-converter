@@ -1,19 +1,22 @@
-import type { Proc } from './types';
+import type { Activity } from './types';
 
 // In-memory state shared across routes
-export const processes = new Map<string, Proc>();
+export const activities = new Map<string, Activity>();
 export const subscribers = new Map<string, Set<(event: string, data: string) => void>>();
 export const eventBuffer = new Map<string, Array<{event: string, data: string, ts: number}>>();
 
+// Backward compatibility alias
+export const processes = activities;
+
 // Broadcasting functions
-export function broadcast(procId: string, event: string, data: unknown) {
+export function broadcast(activityId: string, event: string, data: unknown) {
   const payload = JSON.stringify({ event, data, ts: Date.now() });
   
   // Buffer the event
-  if (!eventBuffer.has(procId)) {
-    eventBuffer.set(procId, []);
+  if (!eventBuffer.has(activityId)) {
+    eventBuffer.set(activityId, []);
   }
-  const buffer = eventBuffer.get(procId)!;
+  const buffer = eventBuffer.get(activityId)!;
   buffer.push({ event: 'message', data: payload, ts: Date.now() });
   
   // Keep only last 100 events
@@ -22,7 +25,7 @@ export function broadcast(procId: string, event: string, data: unknown) {
   }
   
   // Send to all subscribers
-  const subs = subscribers.get(procId);
+  const subs = subscribers.get(activityId);
   if (!subs) return;
   
   for (const send of subs) {
@@ -34,11 +37,11 @@ export function broadcast(procId: string, event: string, data: unknown) {
   }
 }
 
-export function attachSubscriber(procId: string, send: (event: string, data: string) => void) {
-  let set = subscribers.get(procId);
+export function attachSubscriber(activityId: string, send: (event: string, data: string) => void) {
+  let set = subscribers.get(activityId);
   if (!set) {
     set = new Set();
-    subscribers.set(procId, set);
+    subscribers.set(activityId, set);
   }
   set.add(send);
   return () => {

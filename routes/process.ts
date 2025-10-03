@@ -5,7 +5,7 @@ import path from 'path';
 import type { Segment, Proc } from './types';
 import { ensureDirs, youtubeDir, talksDir } from './utils';
 import { processes, broadcast, attachSubscriber, eventBuffer } from './state';
-import { runProcess } from './processor';
+import { runActivity } from './processor';
 
 const processRoutes = new Hono();
 
@@ -136,26 +136,30 @@ processRoutes.post('/api/process', async (c) => {
 
   const id = crypto.randomUUID();
 
-  const proc: Proc = {
+  const activity: Proc = {
     id,
-    sourceType,
-    filename,
-    sourcePath,
-    sourceVideoId,
-    segments: body.segments,
+    type: 'segment',
+    title: `Segment ${body.segments.length} clip${body.segments.length > 1 ? 's' : ''}`,
     status: 'running',
     startedAt: Date.now(),
     currentIndex: 0,
     total: body.segments.length,
     logs: [],
     outputs: [],
+    metadata: {
+      sourceType,
+      filename,
+      sourcePath,
+      sourceVideoId,
+      segments: body.segments,
+    }
   };
 
   // Fire & forget
-  runProcess(proc).catch((err) => {
-    proc.logs.push(String(err?.stack || err));
-    proc.status = 'failed';
-    broadcast(proc.id, 'status', { status: proc.status });
+  runActivity(activity).catch((err: Error) => {
+    activity.logs.push(String(err?.stack || err));
+    activity.status = 'failed';
+    broadcast(activity.id, 'status', { status: activity.status });
   });
 
   return c.json({ id });

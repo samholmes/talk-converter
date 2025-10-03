@@ -1,50 +1,70 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { VideoPlayerShell } from './components/video-player/VideoPlayerShell';
-import { ProcessLogs } from './components/ProcessLogs';
+import { ActivityLogs } from './components/ActivityLogs';
 import { EmptyState } from './components/EmptyState';
 import type { VideoInfo, CurrentMedia } from './types';
 import { api } from './api';
 
-type AppMode = 'none' | 'video' | 'process';
+type AppMode = 'none' | 'video' | 'activity';
+
+interface Activity {
+  id: string;
+  type: 'segment' | 'add-intro';
+  title: string;
+  status: 'running' | 'completed' | 'failed';
+  startedAt: number;
+  currentIndex?: number;
+  total?: number;
+  outputs?: string[];
+}
 
 export function App() {
   const [mode, setMode] = useState<AppMode>('none');
   const [liveStreams, setLiveStreams] = useState<VideoInfo[]>([]);
   const [talks, setTalks] = useState<VideoInfo[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [current, setCurrent] = useState<CurrentMedia>({
     type: null,
     filename: null,
     url: null,
     title: null
   });
-  const [currentProcess, setCurrentProcess] = useState<string | null>(null);
+  const [currentActivity, setCurrentActivity] = useState<string | null>(null);
 
-  // Refresh lists on mount and after processing
   const refreshLists = async () => {
     try {
       const data = await api.list();
       setLiveStreams(data.liveStreams);
       setTalks(data.talks);
-      
-      // TODO: Load active processes from server if needed
     } catch (error) {
       console.error('Failed to refresh lists:', error);
     }
   };
 
+  const refreshActivities = async () => {
+    try {
+      const data = await api.getActivities();
+      setActivities(data);
+    } catch (error) {
+      console.error('Failed to refresh activities:', error);
+    }
+  };
+
   useEffect(() => {
     refreshLists();
+    refreshActivities();
+    
+    const interval = setInterval(refreshActivities, 2000);
+    return () => clearInterval(interval);
   }, []);
 
   const selectVideo = (type: 'youtube' | 'talks', video: VideoInfo) => {
     if (video.isProcessing && video.processId) {
-      // If it's a processing video, show the process view
-      setCurrentProcess(video.processId);
-      setMode('process');
+      setCurrentActivity(video.processId);
+      setMode('activity');
       setCurrent({ type: null, filename: null, url: null, title: null });
     } else {
-      // Normal video selection
       setCurrent({
         type,
         filename: video.name,
@@ -52,55 +72,31 @@ export function App() {
         title: video.title
       });
       setMode('video');
-      setCurrentProcess(null);
+      setCurrentActivity(null);
     }
   };
 
-
-
-  const handleProcessStart = (processId: string, title?: string) => {
-    // Add a temporary processing talk to the talks list
-    const processingTalk: VideoInfo = {
-      name: processId,
-      url: '',
-      title: title || 'Processing...',
-      processId: processId,
-      isProcessing: true
-    };
-    
-    setTalks(prev => [...prev, processingTalk]);
-    
-    // Select the processing talk
-    selectVideo('talks', processingTalk);
+  const selectActivity = (activityId: string) => {
+    setCurrentActivity(activityId);
+    setMode('activity');
+    setCurrent({ type: null, filename: null, url: null, title: null });
   };
 
-  const handleProcessComplete = async (processId: string, outputs: string[], status: 'completed' | 'failed') => {
-    // Remove the processing talk from the list
-    setTalks(prev => prev.filter(t => t.processId !== processId));
+
+
+  const handleActivityStart = (activityId: string) => {
+    refreshActivities();
+    selectActivity(activityId);
+  };
+
+  const handleActivityComplete = async (_activityId: string, _outputs: string[], status: 'completed' | 'failed') => {
+    await refreshActivities();
     
     if (status === 'failed') {
-      setMode('none');
-      setCurrent({ type: null, filename: null, url: null, title: null });
-      setCurrentProcess(null);
       return;
     }
     
-    // Refresh talks list to get the new talk
-    const data = await api.list();
-    setLiveStreams(data.liveStreams);
-    setTalks(data.talks);
-    
-    // Find and select the new video if available
-    if (status === 'completed' && outputs && outputs.length > 0) {
-      const outputPath = outputs[0];
-      const dirName = outputPath.split('/').pop();
-      
-      // Find the newly created talk in the refreshed data
-      const newTalk = data.talks.find(t => t.name === dirName);
-      if (newTalk) {
-        selectVideo('talks', newTalk);
-      }
-    }
+    await refreshLists();
   };
 
   const handleDelete = async (filename: string) => {
@@ -160,9 +156,12 @@ export function App() {
       <Sidebar
         liveStreams={liveStreams}
         talks={talks}
+        activities={activities}
         onSelectVideo={selectVideo}
+        onSelectActivity={selectActivity}
         selectedVideo={mode === 'video' ? current : null}
-        selectedProcess={mode === 'process' ? currentProcess : null}
+        selectedProcess={null}
+        selectedActivity={mode === 'activity' ? currentActivity : null}
       />
       <main>
         {mode === 'video' && current.url && current.type && current.filename && (
@@ -173,15 +172,15 @@ export function App() {
               url: current.url,
               label: current.title || current.filename,
             }}
-            onProcessStart={handleProcessStart}
+            onProcessStart={handleActivityStart}
             onDelete={current.type === 'talks' ? () => handleDelete(current.filename!) : undefined}
             onRename={(newName) => handleRename(current.type!, current.filename!, newName)}
           />
         )}
-        {mode === 'process' && currentProcess && (
-          <ProcessLogs
-            processId={currentProcess}
-            onComplete={(outputs: string[], status: 'completed' | 'failed') => handleProcessComplete(currentProcess, outputs, status)}
+        {mode === 'activity' && currentActivity && (
+          <ActivityLogs
+            activityId={currentActivity}
+            onComplete={(outputs: string[], status: 'completed' | 'failed') => handleActivityComplete(currentActivity, outputs, status)}
           />
         )}
         {mode === 'none' && <EmptyState />}

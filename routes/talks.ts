@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import fs from 'fs/promises';
 import path from 'path';
 import { ensureDirs, talksDir, sanitize, rootDir } from './utils';
-import type { TalkMetadata, TalkEdit } from './types';
+import type { TalkMetadata } from './types';
 
 const talksRoutes = new Hono();
 
@@ -252,7 +252,14 @@ talksRoutes.post('/api/talks/:filename/add-intro', async (c) => {
       return c.json({ success: false, error: 'Talk video not found' }, 404);
     }
     
-    // Read metadata
+    // Check intro file exists
+    const introPath = path.join(rootDir, 'assets', 'DEVxIntro.mp4');
+    const introStats = await fs.stat(introPath).catch(() => null);
+    if (!introStats) {
+      return c.json({ success: false, error: 'Intro video not found' }, 404);
+    }
+    
+    // Read metadata for title
     const metadataPath = path.join(dirPath, 'metadata.json');
     let metadata: TalkMetadata;
     try {
@@ -261,71 +268,37 @@ talksRoutes.post('/api/talks/:filename/add-intro', async (c) => {
       metadata = { title: dirName, createdAt: Date.now() };
     }
     
-    // Generate timestamp-based filename
-    const timestamp = Date.now();
-    const outputFilename = `${timestamp}.mp4`;
-    const outputPath = path.join(dirPath, outputFilename);
-    
-    // Check intro file exists
-    const introPath = path.join(rootDir, 'assets', 'DEVxIntro.mp4');
-    const introStats = await fs.stat(introPath).catch(() => null);
-    if (!introStats) {
-      return c.json({ success: false, error: 'Intro video not found' }, 404);
-    }
-    
-    // Get intro duration for crossfade timing
-    const introProbe = Bun.spawn([
-      'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
-      '-of', 'default=noprint_wrappers=1:nokey=1', introPath
-    ], { stdout: 'pipe' });
-    const introDurationText = await new Response(introProbe.stdout).text();
-    const introDuration = parseFloat(introDurationText.trim());
-    const xfadeOffset = Math.floor(introDuration - 1); // Start crossfade 1s before intro ends
-    
-    // Run ffmpeg to concatenate using filter_complex with crossfade
-    const p = Bun.spawn([
-      'ffmpeg', '-y',
-      '-i', introPath,
-      '-i', videoPath,
-      '-filter_complex',
-      // Normalize and prepare video streams
-      '[0:v]fps=30,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[v0];' +
-      '[1:v]fps=30,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[v1];' +
-      // Apply video crossfade (videos will overlap by 1 second)
-      `[v0][v1]xfade=transition=fade:duration=1:offset=${xfadeOffset},format=yuv420p[vout];` +
-      // Concatenate audio streams normally (no crossfade to avoid complexity)
-      '[0:a][1:a]concat=n=2:v=0:a=1[aout]',
-      '-map', '[vout]',
-      '-map', '[aout]',
-      '-c:v', 'libx264', '-preset', 'fast',
-      '-c:a', 'aac', '-ar', '48000', '-b:a', '192k',
-      outputPath
-    ], { stdout: 'pipe', stderr: 'pipe' });
-    
-    await p.exited;
-    
-    if (p.exitCode !== 0) {
-      return c.json({ success: false, error: 'Failed to concatenate videos' }, 500);
-    }
-    
-    // Update metadata
-    const edit: TalkEdit = {
-      filename: outputFilename,
-      timestamp,
-      description: 'Added intro clip'
+    // Create activity
+    const activityId = crypto.randomUUID();
+    const activity = {
+      id: activityId,
+      type: 'add-intro' as const,
+      title: `Add intro to "${metadata.title}"`,
+      status: 'running' as const,
+      startedAt: Date.now(),
+      logs: [],
+      outputs: [],
+      metadata: {
+        talkDir: dirPath,
+        talkName: metadata.title,
+        introPath,
+        videoPath,
+        filename: dirName
+      }
     };
     
-    if (!metadata.edits) {
-      metadata.edits = [];
-    }
-    metadata.edits.push(edit);
+    // Import and run activity processor
+    const { runActivity } = await import('./processor');
     
-    await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+    // Fire & forget
+    runActivity(activity).catch((err: Error) => {
+      console.error('Error running add-intro activity:', err);
+    });
     
-    return c.json({ success: true, edit });
+    return c.json({ id: activityId });
   } catch (error) {
-    console.error('Error adding intro:', error);
-    return c.json({ success: false, error: 'Failed to add intro' }, 500);
+    console.error('Error creating add-intro activity:', error);
+    return c.json({ success: false, error: 'Failed to create activity' }, 500);
   }
 });
 

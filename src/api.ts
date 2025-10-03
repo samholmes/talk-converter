@@ -88,5 +88,32 @@ export const api = {
     });
     if (!response.ok) throw new Error('Failed to delete edit');
     return response.json();
+  },
+
+  async getActivities() {
+    const response = await fetch(`${API_BASE}/activities`);
+    if (!response.ok) throw new Error('Failed to fetch activities');
+    return response.json();
+  },
+
+  async getActivity(id: string) {
+    const response = await fetch(`${API_BASE}/activities/${id}`);
+    if (!response.ok) throw new Error('Failed to get activity');
+    return response.json();
+  },
+
+  streamActivity(id: string, onMessage: (msg: any) => void): EventSource {
+    const eventSource = new EventSource(`${API_BASE}/activities/${id}/stream`);
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        onMessage(data);
+      } catch (err) {
+        console.error('Failed to parse SSE message:', err);
+      }
+    };
+    
+    return eventSource;
   }
 };

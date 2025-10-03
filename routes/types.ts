@@ -18,18 +18,31 @@ export interface TalkMetadata {
   edits?: TalkEdit[];
 }
 
-export interface Proc {
+export type ActivityType = 'segment' | 'add-intro';
+
+export interface Activity {
   id: string;
-  sourceType: 'youtube' | 'talks';
-  filename: string;
-  sourcePath: string;
-  sourceVideoId?: string;
-  segments: Segment[];
+  type: ActivityType;
+  title: string;
   status: 'running' | 'completed' | 'failed';
   startedAt: number;
   completedAt?: number;
-  currentIndex: number;
-  total: number;
+  currentIndex?: number;
+  total?: number;
   logs: string[];
   outputs: string[];
+  metadata?: {
+    sourceType?: 'youtube' | 'talks';
+    filename?: string;
+    talkName?: string;
+    segments?: Segment[];
+    sourceVideoId?: string;
+    sourcePath?: string;
+    talkDir?: string;
+    introPath?: string;
+    videoPath?: string;
+  };
 }
+
+// Backward compatibility alias for existing code
+export type Proc = Activity;

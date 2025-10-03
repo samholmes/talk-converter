@@ -2,32 +2,40 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import type { ProcessMessage, ProcessSnapshot } from '../types';
 
-interface ProcessLogsProps {
-  processId: string;
-  onComplete: (outputs: string[], status: 'completed' | 'failed') => void;
+interface ActivityLogsProps {
+  activityId: string;
+  onComplete?: (outputs: string[], status: 'completed' | 'failed') => void;
 }
 
-export function ProcessLogs({ processId, onComplete }: ProcessLogsProps) {
-  const [status, setStatus] = useState('Connecting to process stream...');
+export function ActivityLogs({ activityId, onComplete }: ActivityLogsProps) {
+  const [status, setStatus] = useState('Connecting to activity stream...');
   const [logs, setLogs] = useState<string[]>([]);
+  const isDoneRef = useRef(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
-    // Close any existing connection
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  useEffect(() => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
 
-    setStatus('Connecting to process stream...');
+    setStatus('Connecting to activity stream...');
     setLogs([]);
+    isDoneRef.current = false;
 
-    const eventSource = api.streamProcess(processId, (msg: ProcessMessage) => {
+    const eventSource = api.streamActivity(activityId, (msg: ProcessMessage) => {
       console.log('Received SSE message:', msg);
       
       if (msg.event === 'snapshot') {
         const snapshot = msg.data as ProcessSnapshot;
-        setStatus(`Status: ${snapshot.status} (${snapshot.currentIndex}/${snapshot.total})`);
+        const isComplete = snapshot.status === 'completed' || snapshot.status === 'failed';
+        isDoneRef.current = isComplete;
+        setStatus(`Status: ${snapshot.status}${snapshot.total ? ` (${snapshot.currentIndex}/${snapshot.total})` : ''}`);
         if (snapshot.logs && snapshot.logs.length > 0) {
           setLogs(snapshot.logs);
         }
@@ -35,18 +43,19 @@ export function ProcessLogs({ processId, onComplete }: ProcessLogsProps) {
         const { text } = msg.data;
         setLogs(prev => [...prev, text]);
         
-        // Auto-scroll to bottom
         setTimeout(() => {
           logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 10);
       } else if (msg.event === 'status') {
         const { status: newStatus, outputs } = msg.data;
         console.log('Received status update:', newStatus, 'with outputs:', outputs);
+        const isComplete = newStatus === 'completed' || newStatus === 'failed';
+        isDoneRef.current = isComplete;
         setStatus(`Status: ${newStatus}`);
         
-        if ((newStatus === 'completed' || newStatus === 'failed')) {
-          console.log('Process completed/failed, calling onComplete');
-          onComplete(outputs || [], newStatus === 'completed' ? 'completed' : 'failed');
+        if (isComplete && onCompleteRef.current) {
+          console.log('Activity completed/failed, calling onComplete');
+          onCompleteRef.current(outputs || [], newStatus === 'completed' ? 'completed' : 'failed');
         }
       } else if (msg.event === 'progress') {
         const { currentIndex, total, segment } = msg.data;
@@ -55,12 +64,11 @@ export function ProcessLogs({ processId, onComplete }: ProcessLogsProps) {
     });
 
     eventSource.onopen = () => {
-      setStatus('Connected, waiting for updates...');
+      console.log('SSE connection opened');
     };
 
     eventSource.onerror = (error) => {
-      console.error('SSE error:', error);
-      setStatus('Connection error, retrying...');
+      console.error('SSE error (auto-reconnecting):', error);
     };
 
     eventSourceRef.current = eventSource;
@@ -71,7 +79,7 @@ export function ProcessLogs({ processId, onComplete }: ProcessLogsProps) {
         eventSourceRef.current = null;
       }
     };
-  }, [processId, onComplete]);
+  }, [activityId]);
 
   return (
     <div id="logsUI">

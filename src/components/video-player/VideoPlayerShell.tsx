@@ -64,12 +64,8 @@ export function VideoPlayerShell({
     setIsAddingIntro(true);
     try {
       const result = await api.addIntroToTalk(source.filename);
-      if (result.success) {
-        const updatedMetadata = await api.getTalkMetadata(source.filename);
-        setMetadata(updatedMetadata);
-        if (result.edit) {
-          setSelectedEdit(result.edit.filename);
-        }
+      if (result.id) {
+        onProcessStart(result.id, `Add intro to ${source.label}`);
       }
     } catch (error) {
       console.error('Failed to add intro:', error);
