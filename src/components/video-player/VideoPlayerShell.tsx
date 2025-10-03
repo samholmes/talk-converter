@@ -66,6 +66,18 @@ export function VideoPlayerShell({
           videoRef.current.currentTime = nextTime;
           setCurrentTime(nextTime);
           break;
+        case ' ':
+        case 'Space':
+        case 'Spacebar':
+          e.preventDefault();
+          if (videoRef.current.paused) {
+            videoRef.current.play();
+            setIsPlaying(true);
+          } else {
+            videoRef.current.pause();
+            setIsPlaying(false);
+          }
+          break;
       }
     };
 
