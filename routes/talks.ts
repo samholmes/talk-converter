@@ -280,7 +280,9 @@ talksRoutes.post('/api/talks/:filename/add-intro', async (c) => {
     // Run ffmpeg to concatenate
     const p = Bun.spawn([
       'ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', concatListPath,
-      '-c:v', 'libx264', '-preset', 'fast', '-c:a', 'copy', outputPath
+      '-c:v', 'libx264', '-preset', 'fast', 
+      '-c:a', 'aac', '-ar', '48000', '-b:a', '192k',
+      outputPath
     ], { stdout: 'pipe', stderr: 'pipe' });
     
     await p.exited;
