@@ -106,7 +106,7 @@ export async function spliceVideoIntoSegments(
   
   if (!(await fs.exists(videoFile))) {
     execSync(
-      `ffmpeg -ss ${start} -i ${videoPath} -to ${end} -c:v libx264 -preset fast -c:a copy -movflags +faststart ${videoFile}`,
+      `ffmpeg -i ${videoPath} -ss ${start} -to ${end} -c:v libx264 -preset fast -c:a copy -movflags +faststart ${videoFile}`,
       {
         stdio: "inherit",
       }

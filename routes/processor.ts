@@ -96,8 +96,8 @@ export async function runProcess(proc: Proc) {
       if (localStats?.isFile()) {
         command = [
           'ffmpeg', '-y',
-          '-ss', String(seg.start),
           '-i', localSourcePath,
+          '-ss', String(seg.start),
           '-to', String(seg.end),
           '-c:v', 'libx264',
           '-preset', 'fast',
@@ -175,8 +175,8 @@ export async function runProcess(proc: Proc) {
       // Use ffmpeg directly to extract the segment
       command = [
         'ffmpeg', '-y',
-        '-ss', String(seg.start),
         '-i', sourcePath,
+        '-ss', String(seg.start),
         '-to', String(seg.end),
         '-c:v', 'libx264',
         '-preset', 'fast',
