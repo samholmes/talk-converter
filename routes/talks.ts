@@ -170,6 +170,64 @@ talksRoutes.get('/api/talks/:filename/metadata', async (c) => {
   }
 });
 
+// Delete a talk edit
+talksRoutes.delete('/api/talks/:filename/edits/:editFilename', async (c) => {
+  await ensureDirs();
+  const filename = decodeURIComponent(c.req.param('filename'));
+  const editFilename = decodeURIComponent(c.req.param('editFilename'));
+  
+  if (filename.includes('..') || filename.includes('/') || editFilename.includes('..') || editFilename.includes('/')) {
+    return c.text('Invalid path', 400);
+  }
+  
+  const dirName = filename.replace(/\.mp4$/i, '');
+  const dirPath = path.join(talksDir, dirName);
+  
+  try {
+    const stats = await fs.stat(dirPath).catch(() => null);
+    if (!stats?.isDirectory()) {
+      return c.json({ success: false, error: 'Talk not found' }, 404);
+    }
+    
+    // Read metadata
+    const metadataPath = path.join(dirPath, 'metadata.json');
+    let metadata: TalkMetadata;
+    try {
+      metadata = JSON.parse(await fs.readFile(metadataPath, 'utf-8'));
+    } catch {
+      return c.json({ success: false, error: 'Metadata not found' }, 404);
+    }
+    
+    // Find and remove the edit from metadata
+    if (!metadata.edits) {
+      return c.json({ success: false, error: 'Edit not found' }, 404);
+    }
+    
+    const editIndex = metadata.edits.findIndex(e => e.filename === editFilename);
+    if (editIndex === -1) {
+      return c.json({ success: false, error: 'Edit not found' }, 404);
+    }
+    
+    metadata.edits.splice(editIndex, 1);
+    
+    // Delete the video file
+    const editPath = path.join(dirPath, editFilename);
+    await fs.unlink(editPath).catch(() => {});
+    
+    // Delete fast-start version if exists
+    const fsPath = editPath.replace(/\.mp4$/i, '.fs.mp4');
+    await fs.unlink(fsPath).catch(() => {});
+    
+    // Save updated metadata
+    await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+    
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting edit:', error);
+    return c.json({ success: false, error: 'Failed to delete edit' }, 500);
+  }
+});
+
 // Add intro to a talk video
 talksRoutes.post('/api/talks/:filename/add-intro', async (c) => {
   await ensureDirs();

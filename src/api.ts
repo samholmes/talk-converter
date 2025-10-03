@@ -80,5 +80,13 @@ export const api = {
     const response = await fetch(`${API_BASE}/talks/${encodeURIComponent(filename)}/metadata`);
     if (!response.ok) throw new Error('Failed to fetch metadata');
     return response.json();
+  },
+
+  async deleteTalkEdit(filename: string, editFilename: string) {
+    const response = await fetch(`${API_BASE}/talks/${encodeURIComponent(filename)}/edits/${encodeURIComponent(editFilename)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete edit');
+    return response.json();
   }
 };

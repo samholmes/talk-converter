@@ -101,6 +101,28 @@ export function VideoPlayerShell({
     });
   };
 
+  const handleDeleteEdit = async (filename: string) => {
+    if (!confirm('Are you sure you want to delete this version?')) {
+      return;
+    }
+
+    if (source.type !== 'talks') return;
+
+    try {
+      await api.deleteTalkEdit(source.filename, filename);
+      const updatedMetadata = await api.getTalkMetadata(source.filename);
+      setMetadata(updatedMetadata);
+
+      if (selectedEdit === filename) {
+        setSelectedEdit(null);
+        handleSelectEdit(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete edit:', error);
+      alert('Failed to delete version');
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!videoRef.current) return;
@@ -395,26 +417,58 @@ export function VideoPlayerShell({
                 </button>
 
                 {metadata.edits?.map((edit) => (
-                  <button
+                  <div
                     key={edit.filename}
-                    onClick={() => handleSelectEdit(edit.filename)}
-                    className={selectedEdit === edit.filename ? 'edit-item selected' : 'edit-item'}
                     style={{
-                      padding: '8px 12px',
-                      background: selectedEdit === edit.filename ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '4px',
-                      color: '#fff',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '13px'
+                      display: 'flex',
+                      gap: '4px',
+                      alignItems: 'stretch'
                     }}
                   >
-                    <div style={{ fontWeight: '500' }}>{edit.description}</div>
-                    <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
-                      {formatEditDate(edit.timestamp)}
-                    </div>
-                  </button>
+                    <button
+                      onClick={() => handleSelectEdit(edit.filename)}
+                      className={selectedEdit === edit.filename ? 'edit-item selected' : 'edit-item'}
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        background: selectedEdit === edit.filename ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '4px',
+                        color: '#fff',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontSize: '13px'
+                      }}
+                    >
+                      <div style={{ fontWeight: '500' }}>{edit.description}</div>
+                      <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
+                        {formatEditDate(edit.timestamp)}
+                      </div>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteEdit(edit.filename);
+                      }}
+                      className="delete-btn"
+                      title="Delete this version"
+                      style={{
+                        padding: '8px',
+                        background: 'rgba(255,0,0,0.1)',
+                        border: '1px solid rgba(255,0,0,0.3)',
+                        borderRadius: '4px',
+                        color: '#ff6b6b',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                      </svg>
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
