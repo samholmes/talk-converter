@@ -3,8 +3,9 @@ import path from 'path';
 
 // Paths
 export const rootDir = process.cwd();
-export const youtubeDir = path.join(rootDir, '__youtube');
-export const talksDir = path.join(rootDir, '__talks');
+export const dataDir = path.join(rootDir, 'data');
+export const youtubeDir = path.join(dataDir, 'streams');
+export const talksDir = path.join(dataDir, 'videos');
 
 // Utility functions
 export const ensureDirs = async () => {

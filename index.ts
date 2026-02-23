@@ -16,8 +16,8 @@ const client = new Anthropic({
   apiKey: process.env["ANTHROPIC_API_KEY"], // This is the default and can be omitted
 });
 
-const youtubeDir = path.join(__dirname, "__youtube");
-const talksDir = path.join(__dirname, "__talks");
+const youtubeDir = path.join(__dirname, "data", "streams");
+const talksDir = path.join(__dirname, "data", "videos");
 
 export function ensureFfmpegInstalled() {
   try {

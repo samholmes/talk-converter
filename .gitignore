@@ -183,9 +183,8 @@ node_modules/
 package-lock.json
 yarn.lock
 
-# Project-specific temp directories
-__youtube/
-__talks/
+# Project-specific data directories
+data/
 
 # OS-specific files
 .DS_Store?

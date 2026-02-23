@@ -49,9 +49,9 @@ A powerful CLI tool that helps you split long YouTube videos into individual tal
 
 1. **Basic Usage**
 
-   Make sure you create 2 folders in the proejct directory.
-   __talks for talk files
-   __youtube for youtube source videos .mp4
+   Make sure you create the data directory in the project directory.
+   data/videos for talk files
+   data/streams for source videos .mp4
 
    Use either Youtube Creator studio or the youtube-dl CLI tool download the .mp4 720p minumum video you desire (DEVx stream in this case) and renmae the download to be the {YouTube Video ID}.mp4 ie: youtube.com/watch?v=2cMzN_4guQ0 becomes 2cMzN_4guQ0.mp4
 
@@ -70,9 +70,9 @@ A powerful CLI tool that helps you split long YouTube videos into individual tal
 4. **Output**
    The tool will create:
 
-   - A video file of the extracted segment (`__talks/[title].mp4`)
-   - An audio transcript (`__talks/[title].txt`)
-   - A markdown file with AI-generated description and article (`__talks/[title].md`)
+   - A video file of the extracted segment (`data/videos/[title].mp4`)
+   - An audio transcript (`data/videos/[title].txt`)
+   - A markdown file with AI-generated description and article (`data/videos/[title].md`)
 
 5. **Processing Steps**
    - Downloads the full YouTube video
@@ -84,6 +84,6 @@ A powerful CLI tool that helps you split long YouTube videos into individual tal
 
 - The tool caches downloaded videos and generated transcripts to avoid reprocessing
 - Make sure you have sufficient AWS permissions for S3 and Transcribe services
-- Video segments are saved in the `__talks` directory
-- Original downloaded videos are stored in the `__youtube` directory
+- Video segments are saved in the `data/videos` directory
+- Original downloaded videos are stored in the `data/streams` directory
 - The tool originally was supposed to download the YouTube video for you via code, but I was unable to make that work with the given time constraints 
