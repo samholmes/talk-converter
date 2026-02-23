@@ -90,4 +90,50 @@ streamsRoutes.put('/api/streams/:filename/rename', async (c) => {
   }
 });
 
+// Upload an mp4 as a new stream
+streamsRoutes.post('/api/streams/upload', async (c) => {
+  await ensureDirs();
+
+  const formData = await c.req.formData();
+  const file = formData.get('file');
+  const title = formData.get('title');
+
+  if (!(file instanceof File) || !file.name.endsWith('.mp4')) {
+    return c.json({ success: false, error: 'An mp4 file is required' }, 400);
+  }
+
+  if (!title || typeof title !== 'string' || title.trim().length === 0) {
+    return c.json({ success: false, error: 'A title is required' }, 400);
+  }
+
+  const dirName = sanitize(title.trim());
+  const dirPath = path.join(youtubeDir, dirName);
+
+  const existing = await fs.stat(dirPath).catch(() => null);
+  if (existing) {
+    return c.json({ success: false, error: 'A stream with that name already exists' }, 400);
+  }
+
+  try {
+    await fs.mkdir(dirPath, { recursive: true });
+
+    const videoPath = path.join(dirPath, 'video.mp4');
+    const buffer = await file.arrayBuffer();
+    await fs.writeFile(videoPath, Buffer.from(buffer));
+
+    const metadata = {
+      title: title.trim(),
+      createdAt: Date.now()
+    };
+    await fs.writeFile(path.join(dirPath, 'metadata.json'), JSON.stringify(metadata, null, 2));
+
+    return c.json({ success: true, name: dirName });
+  } catch (error) {
+    console.error('Error uploading stream:', error);
+    // Clean up on failure
+    await fs.rm(dirPath, { recursive: true, force: true }).catch(() => {});
+    return c.json({ success: false, error: 'Failed to upload stream' }, 500);
+  }
+});
+
 export default streamsRoutes;

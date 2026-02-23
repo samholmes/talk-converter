@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { VideoInfo, CurrentMedia } from '../types';
 
 interface Activity {
@@ -16,6 +17,7 @@ interface SidebarProps {
   activities: Activity[];
   onSelectVideo: (type: 'youtube' | 'talks', video: VideoInfo) => void;
   onSelectActivity: (activityId: string) => void;
+  onAddStream: (file: File, title: string) => Promise<void>;
   selectedVideo: CurrentMedia | null;
   selectedProcess: string | null;
   selectedActivity: string | null;
@@ -27,10 +29,41 @@ export function Sidebar({
   activities,
   onSelectVideo,
   onSelectActivity,
+  onAddStream,
   selectedVideo,
   selectedProcess,
   selectedActivity
 }: SidebarProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [titleInput, setTitleInput] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPendingFile(file);
+    setTitleInput(file.name.replace(/\.mp4$/i, '').replace(/[_-]/g, ' '));
+    e.target.value = '';
+  };
+
+  const handleUploadConfirm = async () => {
+    if (!pendingFile || !titleInput.trim()) return;
+    setUploading(true);
+    try {
+      await onAddStream(pendingFile, titleInput.trim());
+    } finally {
+      setPendingFile(null);
+      setTitleInput('');
+      setUploading(false);
+    }
+  };
+
+  const handleUploadCancel = () => {
+    setPendingFile(null);
+    setTitleInput('');
+  };
+
   const getActivityIcon = (type: 'segment' | 'add-intro') => {
     return type === 'segment' ? '✂️' : '🎬';
   };
@@ -45,7 +78,49 @@ export function Sidebar({
     <aside>
       <div className="sidebar-main">
         <div className="section">
-          <h2>Live Streams</h2>
+          <div className="section-header">
+            <h2>Live Streams</h2>
+            <button
+              className="add-btn icon-btn"
+              onClick={() => fileInputRef.current?.click()}
+              data-tooltip="Add stream"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/mp4,.mp4"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+            />
+          </div>
+          {pendingFile && (
+            <div className="upload-prompt">
+              <input
+                type="text"
+                value={titleInput}
+                onChange={(e) => setTitleInput(e.target.value)}
+                placeholder="Stream title..."
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleUploadConfirm();
+                  if (e.key === 'Escape') handleUploadCancel();
+                }}
+                disabled={uploading}
+              />
+              <div className="upload-prompt-actions">
+                <button onClick={handleUploadConfirm} disabled={uploading || !titleInput.trim()}>
+                  {uploading ? 'Uploading...' : 'Add'}
+                </button>
+                <button className="cancel-btn" onClick={handleUploadCancel} disabled={uploading}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
           <ul id="liveList">
             {liveStreams.map((video) => (
               <li

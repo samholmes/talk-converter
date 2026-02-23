@@ -117,6 +117,16 @@ export function App() {
     }
   };
 
+  const handleAddStream = async (file: File, title: string) => {
+    try {
+      await api.uploadStream(file, title);
+      await refreshLists();
+    } catch (error) {
+      console.error('Failed to upload stream:', error);
+      alert(error instanceof Error ? error.message : 'Failed to upload stream');
+    }
+  };
+
   const handleRename = async (type: 'youtube' | 'talks', filename: string, newName: string) => {
     try {
       if (type === 'talks') {
@@ -159,6 +169,7 @@ export function App() {
         activities={activities}
         onSelectVideo={selectVideo}
         onSelectActivity={selectActivity}
+        onAddStream={handleAddStream}
         selectedVideo={mode === 'video' ? current : null}
         selectedProcess={null}
         selectedActivity={mode === 'activity' ? currentActivity : null}

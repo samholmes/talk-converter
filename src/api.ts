@@ -58,6 +58,21 @@ export const api = {
     return response.json();
   },
 
+  async uploadStream(file: File, title: string) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', title);
+    const response = await fetch(`${API_BASE}/streams/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(data.error || 'Failed to upload stream');
+    }
+    return response.json() as Promise<{ success: boolean; name: string }>;
+  },
+
   async renameStream(filename: string, newName: string) {
     const response = await fetch(`${API_BASE}/streams/${encodeURIComponent(filename)}/rename`, {
       method: 'PUT',

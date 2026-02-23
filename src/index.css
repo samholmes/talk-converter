@@ -156,6 +156,80 @@ button.delete-video-btn svg {
   margin-bottom: 32px; 
 }
 
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-header h2 {
+  flex: 1;
+}
+
+.add-btn.icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.6);
+  flex-shrink: 0;
+}
+
+.add-btn.icon-btn:hover {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border-color: rgba(255,255,255,0.3);
+}
+
+.add-btn.icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.add-btn.icon-btn svg path {
+  fill: none !important;
+  stroke: currentColor !important;
+}
+
+.upload-prompt {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+}
+
+.upload-prompt input[type="text"] {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.upload-prompt-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.upload-prompt-actions button {
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+.upload-prompt-actions .cancel-btn {
+  background: transparent;
+  color: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+.upload-prompt-actions .cancel-btn:hover {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.8);
+}
+
 .selected { 
   background: var(--selected);
   font-weight: 500;
