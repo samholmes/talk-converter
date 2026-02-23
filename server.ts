@@ -20,4 +20,5 @@ console.log(`Production server listening on http://localhost:${port}`);
 export default {
   port,
   fetch: app.fetch,
+  maxRequestBodySize: 1024 * 1024 * 1024 * 5, // 5GB
 };

@@ -118,8 +118,7 @@ streamsRoutes.post('/api/streams/upload', async (c) => {
     await fs.mkdir(dirPath, { recursive: true });
 
     const videoPath = path.join(dirPath, 'video.mp4');
-    const buffer = await file.arrayBuffer();
-    await fs.writeFile(videoPath, Buffer.from(buffer));
+    await Bun.write(videoPath, file);
 
     const metadata = {
       title: title.trim(),
