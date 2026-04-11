@@ -120,6 +120,16 @@ export function VideoPlayerShell({
     }
   };
 
+  const getTalkVersionUrl = (filename: string | null) => {
+    const baseUrl = `/media/talks/${encodeURIComponent(source.filename)}`;
+    return filename ? `${baseUrl}/${encodeURIComponent(filename)}` : `${baseUrl}/video.mp4`;
+  };
+
+  const getTalkVersionDownloadName = () => {
+    const talkName = source.label.replace(/\.[^/.]+$/, '');
+    return `${talkName}.mp4`;
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!videoRef.current) return;
@@ -398,25 +408,51 @@ export function VideoPlayerShell({
             <div className="edits-list" style={{ marginTop: '16px', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
               <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>Versions</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <button
-                  onClick={() => handleSelectEdit(null)}
-                  className={selectedEdit === null ? 'edit-item selected' : 'edit-item'}
+                <div
                   style={{
-                    padding: '8px 12px',
-                    background: selectedEdit === null ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '4px',
-                    color: '#fff',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: '13px'
+                    display: 'flex',
+                    gap: '4px',
+                    alignItems: 'stretch'
                   }}
                 >
-                  <div style={{ fontWeight: '500' }}>Original</div>
-                  <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
-                    {formatEditDate(metadata.createdAt)}
-                  </div>
-                </button>
+                  <button
+                    onClick={() => handleSelectEdit(null)}
+                    className={selectedEdit === null ? 'edit-item selected' : 'edit-item'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      background: selectedEdit === null ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '4px',
+                      color: '#fff',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <div style={{ fontWeight: '500' }}>Original</div>
+                    <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
+                      {formatEditDate(metadata.createdAt)}
+                    </div>
+                  </button>
+                    <a
+                      href={getTalkVersionUrl(null)}
+                      download={getTalkVersionDownloadName()}
+                    className="button-secondary"
+                    title="Download original"
+                    style={{
+                      padding: '8px',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <path d="M5 20h14v-2H5v2zm7-18v10.17l3.59-3.58L17 10l-5 5-5-5 1.41-1.41L11 12.17V2h1z" />
+                    </svg>
+                  </a>
+                </div>
 
                 {metadata.edits?.map((edit) => (
                   <div
@@ -447,6 +483,24 @@ export function VideoPlayerShell({
                         {formatEditDate(edit.timestamp)}
                       </div>
                     </button>
+                    <a
+                      href={getTalkVersionUrl(edit.filename)}
+                      download={getTalkVersionDownloadName()}
+                      className="button-secondary"
+                      title="Download this version"
+                      style={{
+                        padding: '8px',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M5 20h14v-2H5v2zm7-18v10.17l3.59-3.58L17 10l-5 5-5-5 1.41-1.41L11 12.17V2h1z" />
+                      </svg>
+                    </a>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
