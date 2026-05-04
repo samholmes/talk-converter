@@ -92,7 +92,9 @@ export const api = {
   },
 
   async getTalkMetadata(filename: string) {
-    const response = await fetch(`${API_BASE}/talks/${encodeURIComponent(filename)}/metadata`);
+    const response = await fetch(`${API_BASE}/talks/${encodeURIComponent(filename)}/metadata?t=${Date.now()}`, {
+      cache: 'no-store'
+    });
     if (!response.ok) throw new Error('Failed to fetch metadata');
     return response.json();
   },
